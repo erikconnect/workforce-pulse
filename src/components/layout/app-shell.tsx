@@ -4,6 +4,10 @@ import { useState } from "react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Sidebar } from "./sidebar"
 import { Header } from "./header"
+import { LiveTicker } from "./live-ticker"
+import { CommandPalette } from "./command-palette"
+import { GuidedTour } from "./guided-tour"
+import { useTour } from "@/hooks/use-tour"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -11,6 +15,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const tour = useTour()
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -26,13 +31,26 @@ export function AppShell({ children }: AppShellProps) {
         </SheetContent>
       </Sheet>
 
-      {/* Main column: header + scrollable content */}
+      {/* Main column: ticker + header + scrollable content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={() => setMobileMenuOpen(true)} />
+        <LiveTicker />
+        <Header onMenuClick={() => setMobileMenuOpen(true)} onStartTour={tour.startTour} />
         <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
       </div>
+
+      {/* Global overlays */}
+      <CommandPalette />
+      <GuidedTour
+        isActive={tour.isActive}
+        currentStep={tour.currentStep}
+        totalSteps={tour.totalSteps}
+        step={tour.step}
+        onNext={tour.nextStep}
+        onPrev={tour.prevStep}
+        onEnd={tour.endTour}
+      />
     </div>
   )
 }

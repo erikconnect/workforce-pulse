@@ -23,13 +23,20 @@ const BADGE_CLASS: Record<string, string> = {
   stable: "bg-green-100 text-green-800 border-green-300",
 }
 
+const GLOW_CLASS: Record<string, string> = {
+  critical: "glow-critical",
+  watch: "glow-watch",
+  stable: "glow-stable",
+}
+
 export function SectorCard({ sector }: SectorCardProps) {
   const isPublicSafety = sector.id === "public-safety"
   return (
     <Link href={`/sectors/${sector.id}`} className="block group">
       <Card
         className={cn(
-          "h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5",
+          "h-full transition-all duration-200 card-hover-lift",
+          GLOW_CLASS[sector.status],
           isPublicSafety && "ring-1 ring-red-200/60 ring-offset-2 ring-offset-background"
         )}
       >

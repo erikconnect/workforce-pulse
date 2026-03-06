@@ -48,3 +48,47 @@ export async function updateMissionStep(
   if (!res.ok) throw new Error(`Failed to update step ${stepId}`);
   return res.json();
 }
+
+export async function createMission(payload: {
+  title: string;
+  description: string;
+  priority: import("../types").PulseStatus;
+  sectorId: string;
+  dueDate: string;
+  steps: { title: string; description: string; dueDate: string }[];
+}): Promise<Mission> {
+  if (USE_STUBS) {
+    const newMission: Mission = {
+      id: `mission-${Date.now()}`,
+      title: payload.title,
+      description: payload.description,
+      status: "active",
+      priority: payload.priority,
+      progress: 0,
+      sectorId: payload.sectorId,
+      assignee: "You",
+      dueDate: payload.dueDate,
+      steps: payload.steps.map((s, i) => ({
+        id: `ms-${Date.now()}-${i}`,
+        order: i + 1,
+        title: s.title,
+        description: s.description,
+        completed: false,
+        dueDate: s.dueDate,
+      })),
+      impactMetrics: [],
+    };
+    mutableMissions.unshift({
+      ...newMission,
+      steps: newMission.steps.map((s) => ({ ...s })),
+    });
+    return newMission;
+  }
+  const res = await fetch(`${API}/missions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("Failed to create mission");
+  return res.json();
+}

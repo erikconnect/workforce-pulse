@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Heart, Bookmark, Plus, X, GripVertical } from "lucide-react"
+import { Heart, Bookmark, Plus, X, GripVertical, Search, Star, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
 import { fetchPlaybooks, likePlaybook, savePlaybook, createPlaybook } from "@/services"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -49,7 +49,25 @@ function initials(name: string) {
     .slice(0, 2)
 }
 
+function effectivenessScore(pb: Playbook): number {
+  return Math.min(5, Math.round(((pb.likes * 2 + pb.saves * 3) / Math.max(1, pb.steps.length)) * 0.5 + 1))
+}
+
+function EffectivenessStars({ score }: { score: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={cn("h-3 w-3", n <= score ? "text-amber-500 fill-amber-500" : "text-muted-foreground/30")}
+        />
+      ))}
+    </div>
+  )
+}
+
 function PlaybookCard({ playbook }: { playbook: Playbook }) {
+  const [expanded, setExpanded] = useState(false)
   const queryClient = useQueryClient()
 
   const likeMutation = useMutation({
@@ -75,6 +93,7 @@ function PlaybookCard({ playbook }: { playbook: Playbook }) {
   })
 
   const sectorLabel = SECTORS.find((s) => s.id === playbook.sectorId)?.name ?? playbook.sectorId
+  const score = effectivenessScore(playbook)
 
   return (
     <Card className="flex flex-col h-full">
@@ -105,7 +124,31 @@ function PlaybookCard({ playbook }: { playbook: Playbook }) {
           )}
         </div>
 
-        <p className="text-xs text-muted-foreground">{playbook.steps.length} steps</p>
+        <div className="flex items-center justify-between">
+          <EffectivenessStars score={score} />
+          <p className="text-xs text-muted-foreground">{playbook.steps.length} steps</p>
+        </div>
+
+        {/* Expandable steps */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-between text-xs text-muted-foreground h-7 px-1"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <span>{expanded ? "Hide" : "View"} steps</span>
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+        {expanded && (
+          <ol className="space-y-1.5 pl-1">
+            {playbook.steps.map((step) => (
+              <li key={step.order} className="text-xs flex gap-2">
+                <span className="font-semibold text-muted-foreground shrink-0">{step.order}.</span>
+                <span>{step.instruction}</span>
+              </li>
+            ))}
+          </ol>
+        )}
       </CardContent>
 
       <CardFooter className="pt-3 border-t border-border">
@@ -382,11 +425,38 @@ function PlaybookSkeleton() {
 
 export default function PlaybooksPage() {
   const [createOpen, setCreateOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const [sectorFilter, setSectorFilter] = useState("all")
 
   const { data: playbooks, isLoading } = useQuery({
     queryKey: ["playbooks"],
     queryFn: fetchPlaybooks,
   })
+
+  const filtered = useMemo(() => {
+    if (!playbooks) return []
+    let list = playbooks
+    if (sectorFilter !== "all") {
+      list = list.filter((p) => p.sectorId === sectorFilter)
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.summary.toLowerCase().includes(q) ||
+          p.tags.some((t) => t.toLowerCase().includes(q))
+      )
+    }
+    return list
+  }, [playbooks, sectorFilter, search])
+
+  const recommended = useMemo(() => {
+    if (!playbooks || playbooks.length === 0) return []
+    return [...playbooks]
+      .sort((a, b) => (b.likes * 2 + b.saves * 3) - (a.likes * 2 + a.saves * 3))
+      .slice(0, 3)
+  }, [playbooks])
 
   return (
     <div className="space-y-6">
@@ -403,10 +473,55 @@ export default function PlaybooksPage() {
         </Button>
       </div>
 
+      {/* Recommended for Montgomery */}
+      {!isLoading && recommended.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-semibold">Recommended for Montgomery</h3>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {recommended.map((pb) => (
+              <PlaybookCard key={`rec-${pb.id}`} playbook={pb} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search playbooks..."
+            className="pl-9 h-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={sectorFilter} onValueChange={setSectorFilter}>
+          <SelectTrigger className="w-full sm:w-[200px] h-9">
+            <SelectValue placeholder="All Sectors" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sectors</SelectItem>
+            {SECTORS.map((s) => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading
           ? [...Array(6)].map((_, i) => <PlaybookSkeleton key={i} />)
-          : playbooks?.map((pb) => <PlaybookCard key={pb.id} playbook={pb} />)}
+          : filtered.length === 0
+            ? (
+              <p className="text-sm text-muted-foreground col-span-full text-center py-8">
+                No playbooks match your filters.
+              </p>
+            )
+            : filtered.map((pb) => <PlaybookCard key={pb.id} playbook={pb} />)}
       </div>
 
       <CreatePlaybookDialog open={createOpen} onClose={() => setCreateOpen(false)} />

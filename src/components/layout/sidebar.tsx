@@ -10,6 +10,7 @@ import {
   Target,
   BookOpen,
   Globe,
+  MapPin,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -24,6 +25,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/map", label: "Map", icon: MapPin },
   { href: "/sectors", label: "Sectors", icon: Building2 },
   { href: "/skills", label: "Skills", icon: Zap },
   { href: "/missions", label: "Missions", icon: Target },
@@ -61,6 +63,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
+                data-tour={item.label === "Missions" ? "nav-missions" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   active

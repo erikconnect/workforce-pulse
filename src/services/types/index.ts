@@ -97,6 +97,15 @@ export interface Mission {
   dueDate: string;
 }
 
+export interface CreateMissionPayload {
+  title: string;
+  description: string;
+  priority: PulseStatus;
+  sectorId: string;
+  dueDate: string;
+  steps: { title: string; description: string; dueDate: string }[];
+}
+
 export interface Playbook {
   id: string;
   title: string;

@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Search, TrendingUp } from "lucide-react"
-import { fetchSkills } from "@/services"
+import { Search, TrendingUp, ExternalLink, ChevronDown, ChevronUp, Building2, GraduationCap } from "lucide-react"
+import { fetchSkills, fetchRoles } from "@/services"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/select"
 import { cn, statusToColor } from "@/lib/utils"
 import { SparklineChart } from "@/components/sectors/sparkline-chart"
-import type { PulseStatus } from "@/services/types"
+import type { PulseStatus, Skill } from "@/services/types"
 
 const CATEGORIES = [
   "All",
@@ -60,6 +61,115 @@ function SkillSkeleton() {
   )
 }
 
+const ALIGNMENT_LABEL: Record<PulseStatus, { text: string; cls: string }> = {
+  critical: { text: "High Demand", cls: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700" },
+  watch: { text: "Moderate", cls: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700" },
+  stable: { text: "Steady", cls: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700" },
+}
+
+function SkillCardExpanded({ skill, sectorMap }: { skill: Skill; sectorMap: Map<string, string> }) {
+  const [expanded, setExpanded] = useState(false)
+  const relatedSectors = useMemo(() => {
+    const sectorIds = new Set<string>()
+    for (const roleId of skill.relatedRoles) {
+      const sid = sectorMap.get(roleId)
+      if (sid) sectorIds.add(sid)
+    }
+    return Array.from(sectorIds)
+  }, [skill.relatedRoles, sectorMap])
+
+  const alignment = ALIGNMENT_LABEL[skill.demandLevel]
+
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-3 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-sm leading-tight">{skill.name}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{skill.category}</p>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge className={cn("text-xs border capitalize", BADGE_CLASS[skill.demandLevel])}>
+              {skill.demandLevel}
+            </Badge>
+            <Badge variant="outline" className={cn("text-[10px] border", alignment.cls)}>
+              {alignment.text}
+            </Badge>
+          </div>
+        </div>
+
+        <SparklineChart data={skill.sparklineData} status={skill.demandLevel} height={36} />
+
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <TrendingUp className="h-3 w-3" />
+            <span>Growth rate</span>
+          </div>
+          <span className={cn("font-semibold", statusToColor(skill.demandLevel))}>
+            +{skill.growthRate}%
+          </span>
+        </div>
+
+        {/* Sector mapping */}
+        {relatedSectors.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+            {relatedSectors.map((sid) => (
+              <Badge key={sid} variant="secondary" className="text-[10px] capitalize">
+                {sid.replace(/-/g, " ")}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {skill.relatedRoles.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {skill.relatedRoles.length} related role{skill.relatedRoles.length !== 1 ? "s" : ""}
+          </p>
+        )}
+
+        {/* Training Pathways */}
+        {skill.trainingResources.length > 0 && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-between text-xs text-muted-foreground h-7 px-1"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              <span className="flex items-center gap-1">
+                <GraduationCap className="h-3 w-3" />
+                {expanded ? "Hide" : "Show"} training pathways ({skill.trainingResources.length})
+              </span>
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+            {expanded && (
+              <div className="space-y-1.5 pl-1">
+                {skill.trainingResources.map((tr) => (
+                  <div key={tr.title} className="flex items-start gap-2 text-xs">
+                    <ExternalLink className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                      <a
+                        href={tr.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {tr.title}
+                      </a>
+                      <p className="text-muted-foreground">{tr.provider}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function SkillsPage() {
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("All")
@@ -69,6 +179,20 @@ export default function SkillsPage() {
     queryKey: ["skills"],
     queryFn: () => fetchSkills(),
   })
+
+  const { data: roles } = useQuery({
+    queryKey: ["roles"],
+    queryFn: () => fetchRoles(),
+  })
+
+  // Map roleId → sectorId for sector mapping
+  const sectorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (roles) {
+      for (const role of roles) map.set(role.id, role.sectorId)
+    }
+    return map
+  }, [roles])
 
   const filtered = useMemo(() => {
     if (!skills) return []
@@ -83,6 +207,11 @@ export default function SkillsPage() {
     })
   }, [skills, category, demandLevel, search])
 
+  const criticalSkills = skills?.filter((s) => s.demandLevel === "critical").length ?? 0
+  const watchSkills = skills?.filter((s) => s.demandLevel === "watch").length ?? 0
+  const stableSkills = skills?.filter((s) => s.demandLevel === "stable").length ?? 0
+  const total = skills?.length ?? 1
+
   return (
     <div className="space-y-6">
       <div>
@@ -91,6 +220,28 @@ export default function SkillsPage() {
           In-demand skills across all workforce sectors.
         </p>
       </div>
+
+      {/* Gap Analysis Summary */}
+      {skills && skills.length > 0 && (
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Skill Gap Analysis</p>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-pulse-critical font-semibold">{criticalSkills} critical</span>
+              <span className="text-pulse-watch font-semibold">{watchSkills} watch</span>
+              <span className="text-pulse-stable font-semibold">{stableSkills} stable</span>
+            </div>
+            <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+              <div className="bg-red-500 transition-all" style={{ width: `${(criticalSkills / total) * 100}%` }} />
+              <div className="bg-amber-500 transition-all" style={{ width: `${(watchSkills / total) * 100}%` }} />
+              <div className="bg-green-500 transition-all" style={{ width: `${(stableSkills / total) * 100}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {criticalSkills} of {total} tracked skills are in critical demand — these represent the largest workforce gaps in Montgomery.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -145,39 +296,7 @@ export default function SkillsPage() {
         {isLoading
           ? [...Array(9)].map((_, i) => <SkillSkeleton key={i} />)
           : filtered.map((skill) => (
-              <Card key={skill.id}>
-                <CardContent className="pt-4 pb-3 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm leading-tight">{skill.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{skill.category}</p>
-                    </div>
-                    <Badge
-                      className={cn("text-xs border shrink-0 capitalize", BADGE_CLASS[skill.demandLevel])}
-                    >
-                      {skill.demandLevel}
-                    </Badge>
-                  </div>
-
-                  <SparklineChart data={skill.sparklineData} status={skill.demandLevel} height={36} />
-
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <TrendingUp className="h-3 w-3" />
-                      <span>Growth rate</span>
-                    </div>
-                    <span className={cn("font-semibold", statusToColor(skill.demandLevel))}>
-                      +{skill.growthRate}%
-                    </span>
-                  </div>
-
-                  {skill.relatedRoles.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {skill.relatedRoles.length} related role{skill.relatedRoles.length !== 1 ? "s" : ""}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <SkillCardExpanded key={skill.id} skill={skill} sectorMap={sectorMap} />
             ))}
 
         {!isLoading && filtered.length === 0 && (

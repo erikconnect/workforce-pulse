@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn, statusToColor, formatNumber, formatDelta } from "@/lib/utils"
-import { PulseRing } from "@/components/sectors/pulse-ring"
+import { ImpactGauge } from "@/components/sectors/impact-gauge"
 import { HiringTrendChart } from "@/components/sectors/hiring-trend-chart"
 
 const BADGE_CLASS: Record<string, string> = {
@@ -84,9 +84,9 @@ export default function SectorDetailPage() {
       </Button>
 
       {/* Header */}
-      <div className="flex items-start gap-4">
-        <PulseRing score={sector.pulseScore} status={sector.status} size={80} strokeWidth={7} />
-        <div className="flex-1 min-w-0">
+      <div className="flex items-start gap-6">
+        <ImpactGauge score={sector.pulseScore} status={sector.status} size={180} label="Impact Score" />
+        <div className="flex-1 min-w-0 pt-2">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-2xl font-bold tracking-tight">{sector.name}</h2>
             <Badge className={cn("text-xs border font-medium", BADGE_CLASS[sector.status])}>
