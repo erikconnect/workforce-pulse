@@ -73,7 +73,7 @@ Set `NEXTAUTH_URL` to your deployment URL:
 - **Production:** `https://workforce-pulse.vercel.app` (or your custom domain)
 - **Preview deployments:** `https://$VERCEL_URL` — Vercel substitutes `$VERCEL_URL` with the deployment URL
 
-The app uses `trustHost: true`, so NextAuth will work with Vercel's proxy headers.
+NextAuth v4 uses the `NEXTAUTH_URL` environment variable for host verification behind Vercel's proxy. Ensure this variable is set correctly for each environment.
 
 ## 5. Cron (automatic aggregation)
 

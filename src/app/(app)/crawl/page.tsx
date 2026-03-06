@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { CrawlRunner } from "@/components/brightdata/CrawlRunner"
 import { SnapshotsList } from "@/components/brightdata/SnapshotsList"
 import { DiagnosticsPanel } from "@/components/brightdata/DiagnosticsPanel"
-import { Zap, Loader2, CheckCircle, ArrowRight, Shield, Stethoscope, Building2 } from "lucide-react"
+import { Zap, Loader2, CheckCircle, AlertCircle, ArrowRight, Shield, Stethoscope, Building2 } from "lucide-react"
 
 const PRESETS = [
   { label: "Montgomery Jobs", icon: Building2, queries: "police officer Montgomery AL\nfirefighter Montgomery AL\nnurse Montgomery AL\nsoftware developer Montgomery AL" },
@@ -20,10 +20,12 @@ type PipelineStage = "idle" | "trigger" | "process" | "results"
 export default function CrawlPage() {
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>("idle")
   const [scrapeCount, setScrapeCount] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   async function runQuickCrawl(queries: string) {
+    setError(null)
     setPipelineStage("trigger")
-    await new Promise((r) => setTimeout(r, 0)) // yield so React can paint "trigger" before fetch
+    await new Promise((r) => setTimeout(r, 0))
     try {
       setPipelineStage("process")
       const res = await fetch("/api/jobs/scrape", {
@@ -31,11 +33,16 @@ export default function CrawlPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ queries: queries.split("\n").filter(Boolean) }),
       })
-      if (!res.ok) throw new Error("Scrape failed")
+      if (!res.ok) {
+        const body = await res.text().catch(() => "")
+        throw new Error(body || `Scrape failed (${res.status})`)
+      }
       const data = await res.json()
       setScrapeCount(data.postings?.length ?? data.count ?? 0)
       setPipelineStage("results")
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error"
+      setError(`Crawl failed: ${message}`)
       setPipelineStage("idle")
     }
   }
@@ -84,6 +91,19 @@ export default function CrawlPage() {
               </div>
             ))}
           </div>
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive mb-4">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{error}</span>
+              <button
+                onClick={() => setError(null)}
+                className="text-destructive/70 hover:text-destructive text-xs font-medium"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {/* Quick presets */}
           <div className="flex flex-wrap gap-2">

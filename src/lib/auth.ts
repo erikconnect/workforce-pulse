@@ -66,5 +66,4 @@ export const authOptions: NextAuthOptions = {
     (process.env.NODE_ENV === "development"
       ? "workforce-pulse-dev-secret-use-env-in-production"
       : undefined),
-  trustHost: true, // Required for Vercel
 };
