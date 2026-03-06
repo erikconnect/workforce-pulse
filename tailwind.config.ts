@@ -16,8 +16,8 @@ const config: Config = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-  			display: ["var(--font-display)", "Georgia", "serif"],
+  			sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+  			display: ["var(--font-display)", "Playfair Display", "Georgia", "serif"],
   		},
   		keyframes: {
   			"fade-in": {
@@ -34,6 +34,14 @@ const config: Config = {
   			"fade-in-up": "fade-in-up 0.5s ease-out forwards",
   		},
   		colors: {
+  			"text-dark": "#2c2c2c",
+  			"text-light": "#f5f5f5",
+  			"text-mutedDark": "#6b6b6b",
+  			"text-mutedLight": "#a3a3a3",
+  			"glass-light": "rgba(255, 255, 255, 0.4)",
+  			"glass-dark": "rgba(255, 255, 255, 0.05)",
+  			"glass-border-light": "rgba(255, 255, 255, 0.6)",
+  			"glass-border-dark": "rgba(255, 255, 255, 0.1)",
   			pulse: {
   				critical: 'hsl(var(--destructive))',
   				watch: '#f59e0b',

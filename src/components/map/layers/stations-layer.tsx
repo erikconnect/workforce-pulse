@@ -37,8 +37,14 @@ interface Feature {
 export function StationsLayer() {
   const { data } = useQuery<{ type: string; features: Feature[] }>({
     queryKey: ["arcgis", "stations"],
-    queryFn: () => fetch("/api/arcgis/stations").then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/arcgis/stations")
+      const json = await r.json()
+      if (!r.ok) throw new Error(json.error ?? `HTTP ${r.status}`)
+      return json
+    },
     staleTime: 3600_000,
+    retry: 1,
   })
 
   if (!data?.features) return null

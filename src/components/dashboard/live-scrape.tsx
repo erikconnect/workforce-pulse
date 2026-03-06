@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Zap, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +23,14 @@ const STATUS_MESSAGES: Record<string, string> = {
 }
 
 export function LiveScrape() {
+  return <LiveScrapeInner compact={false} />
+}
+
+export function LiveScrapeCompact() {
+  return <LiveScrapeInner compact />
+}
+
+function LiveScrapeInner({ compact }: { compact: boolean }) {
   const [status, setStatus] = useState<ScrapeStatus>("idle")
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<ScrapeResult | null>(null)
@@ -81,19 +88,19 @@ export function LiveScrape() {
   }
 
   return (
-    <Card className="border-dashed border-2 border-primary/30 bg-primary/[0.03]">
-      <CardContent className="p-4 space-y-3">
+    <div className={compact ? "rounded-2xl bg-white/20 dark:bg-white/5 border border-white/20" : "glass-card rounded-2xl border border-primary/30"}>
+      <div className={compact ? "p-3 space-y-2.5" : "p-4 space-y-3"}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold">Live Job Scrape</h4>
+            <Zap className="h-4 w-4 text-primary shrink-0" />
+            <h4 className="text-sm font-semibold">{compact ? "Live Scrape" : "Live Job Scrape"}</h4>
             <Badge variant="secondary" className="text-[10px]">Bright Data</Badge>
           </div>
           <Button
             size="sm"
             onClick={runScrape}
             disabled={status === "scraping"}
-            className="gap-1.5"
+            className="gap-1.5 h-8"
           >
             {status === "scraping" ? (
               <>
@@ -107,7 +114,7 @@ export function LiveScrape() {
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground">{STATUS_MESSAGES[status]}</p>
+        <p className="text-xs text-muted-foreground">{compact ? "Run an on-demand Bright Data refresh." : STATUS_MESSAGES[status]}</p>
 
         {status === "scraping" && (
           <Progress value={progress} className="h-1.5" />
@@ -140,7 +147,7 @@ export function LiveScrape() {
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

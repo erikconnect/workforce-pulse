@@ -47,26 +47,30 @@ const SKILL_DICTIONARY: string[] = [
   // Public Safety
   "cpr", "first aid", "hazmat", "incident command", "de-escalation", "community policing",
   "emergency dispatch", "use of force", "firearms", "crisis intervention", "ems operations",
+  "law enforcement", "corrections", "911", "paramedic", "firefighter",
   // Healthcare
   "patient care", "triage", "vital signs", "medication administration", "ehr", "emr",
-  "hipaa", "iv therapy", "wound care", "bls", "acls",
+  "hipaa", "iv therapy", "wound care", "bls", "acls", "nursing", "clinical",
   // Construction
   "osha", "blueprint reading", "electrical wiring", "plumbing", "welding", "project management",
-  "site safety", "cad", "scheduling", "cost estimation",
+  "site safety", "cad", "scheduling", "cost estimation", "inspection", "permit",
+  "hvac", "maintenance", "building maintenance",
   // Education
   "classroom management", "curriculum development", "special education", "student assessment",
-  "differentiated instruction", "lesson planning",
+  "differentiated instruction", "lesson planning", "counseling", "library",
   // Technology
   "python", "javascript", "sql", "aws", "azure", "docker", "kubernetes", "react",
   "node.js", "data analysis", "machine learning", "cybersecurity", "networking",
-  "troubleshooting", "linux",
+  "troubleshooting", "linux", "information technology", "it support",
   // Logistics
   "cdl", "route planning", "inventory management", "forklift", "logistics software",
-  "supply chain", "dispatch",
+  "supply chain", "dispatch", "fleet", "warehouse",
+  // Finance / Admin
+  "accounting", "budget", "audit", "revenue", "clerical", "administration",
   // Cross-sector
   "microsoft office", "communication", "leadership", "teamwork", "problem solving",
   "bilingual", "spanish", "data entry", "reporting", "time management",
-  "customer service", "training", "compliance",
+  "customer service", "training", "compliance", "supervision",
 ];
 
 export function extractSkills(text: string): string[] {
@@ -143,7 +147,8 @@ export interface RawJobApsRecord {
 
 export function normalizeJobApsRecord(raw: RawJobApsRecord): JobPosting {
   const title = raw.title ?? "";
-  const description = `${raw.department ?? ""} ${raw.jobType ?? ""}`.trim();
+  const descParts = [raw.department ?? "", raw.jobType ?? "", title].filter(Boolean);
+  const description = descParts.join(" ").trim() || title;
   const sectorId = raw.sectorId ?? classifySector(title, description);
   const extractedSkills = extractSkills(description);
 
@@ -291,10 +296,71 @@ export function deriveInsights(postings: JobPosting[]): JobInsights {
     const day = p.postedDate.slice(0, 10); // "YYYY-MM-DD"
     dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
   }
+  const timelineDates = Array.from(dayMap.keys())
+    .sort((a, b) => a.localeCompare(b))
+    .slice(-30);
+
   const postingsByDay = Array.from(dayMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-30)
     .map(([date, count]) => ({ date, count }));
+
+  const sectorDayMap = new Map<string, Map<string, number>>();
+  const skillDayMap = new Map<string, Map<string, number>>();
+  const totalSkillMentionsDayMap = new Map<string, number>();
+  const topSkillNames = new Set(topSkills.slice(0, 6).map((skill) => skill.name));
+
+  for (const posting of postings) {
+    const day = posting.postedDate.slice(0, 10);
+
+    if (posting.sectorId) {
+      const sectorSeries = sectorDayMap.get(posting.sectorId) ?? new Map<string, number>();
+      sectorSeries.set(day, (sectorSeries.get(day) ?? 0) + 1);
+      sectorDayMap.set(posting.sectorId, sectorSeries);
+    }
+
+    totalSkillMentionsDayMap.set(
+      day,
+      (totalSkillMentionsDayMap.get(day) ?? 0) + posting.extractedSkills.length
+    );
+
+    for (const skill of posting.extractedSkills) {
+      if (!topSkillNames.has(skill)) continue;
+      const skillSeries = skillDayMap.get(skill) ?? new Map<string, number>();
+      skillSeries.set(day, (skillSeries.get(day) ?? 0) + 1);
+      skillDayMap.set(skill, skillSeries);
+    }
+  }
+
+  const sectorTimelines = Array.from(sectorDayMap.entries())
+    .map(([sectorId, series]) => ({
+      sectorId,
+      series: timelineDates.map((date) => ({
+        date,
+        count: series.get(date) ?? 0,
+      })),
+    }))
+    .sort((a, b) => {
+      const aTotal = a.series.reduce((sum, point) => sum + point.count, 0);
+      const bTotal = b.series.reduce((sum, point) => sum + point.count, 0);
+      return bTotal - aTotal;
+    });
+
+  const skillTimelines = topSkills
+    .slice(0, 6)
+    .map((skill) => ({
+      name: skill.name,
+      series: timelineDates.map((date) => ({
+        date,
+        count: skillDayMap.get(skill.name)?.get(date) ?? 0,
+      })),
+    }))
+    .filter((skill) => skill.series.some((point) => point.count > 0));
+
+  const totalSkillMentionsByDay = timelineDates.map((date) => ({
+    date,
+    count: totalSkillMentionsDayMap.get(date) ?? 0,
+  }));
 
   return {
     totalPostings,
@@ -304,5 +370,8 @@ export function deriveInsights(postings: JobPosting[]): JobInsights {
     sectorBreakdown,
     criticalRolesCount,
     postingsByDay,
+    sectorTimelines,
+    skillTimelines,
+    totalSkillMentionsByDay,
   };
 }

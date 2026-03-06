@@ -87,6 +87,10 @@ export interface Mission {
   progress: number; // 0–100
   steps: MissionStep[];
   sectorId: string;
+  rewardPoints: number;
+  participantCount: number;
+  communityImpact: string;
+  tags: string[];
   impactMetrics: {
     label: string;
     before: number;
@@ -106,6 +110,37 @@ export interface CreateMissionPayload {
   steps: { title: string; description: string; dueDate: string }[];
 }
 
+export interface MissionMemberBadge {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export interface MissionMemberProfile {
+  id: string;
+  name: string;
+  role: string;
+  city: string;
+  level: number;
+  points: number;
+  nextLevelPoints: number;
+  streak: number;
+  missionPoints: number;
+  skillPoints: number;
+  sectorPoints: number;
+  playbookPoints: number;
+  completedMissionCount: number;
+  activeMissionCount: number;
+  contributedSteps: number;
+  helpedWorkers: number;
+  playbooksCreated: number;
+  playbooksLiked: number;
+  playbooksSaved: number;
+  skillActionsCompleted: number;
+  sectorActionsCompleted: number;
+  badges: MissionMemberBadge[];
+}
+
 export interface Playbook {
   id: string;
   title: string;
@@ -117,6 +152,11 @@ export interface Playbook {
   likes: number;
   saves: number;
   createdAt: string;
+  rewardPoints: number;
+  estimatedHours: number;
+  difficulty: "starter" | "operator" | "advanced";
+  impactSummary: string;
+  linkedSkills: string[];
   steps: { order: number; instruction: string }[];
   hasLiked: boolean;
   hasSaved: boolean;
@@ -146,6 +186,45 @@ export interface JobPosting {
   jobType?: string;          // "full-time" | "part-time" | "contract"
 }
 
+// Benefits catalog and rewards
+export type BenefitCategory = "application" | "skills" | "contribution";
+
+export interface BenefitEligibility {
+  minPoints?: number;
+  minLevel?: number;
+  requiredBadges?: string[];
+  domains?: ("missions" | "skills" | "sectors" | "playbooks")[];
+}
+
+export interface Benefit {
+  id: string;
+  title: string;
+  description: string;
+  category: BenefitCategory;
+  costPoints: number;
+  eligibility: BenefitEligibility;
+  type: "redeemable" | "unlockable";
+  provider?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
+export interface RewardTier {
+  id: string;
+  name: string;
+  minPoints: number;
+  benefits: string[]; // benefit IDs
+}
+
+export interface RewardRedemption {
+  id: string;
+  benefitId: string;
+  userId: string;
+  pointsSpent: number;
+  redeemedAt: string; // ISO date
+  status: "pending" | "fulfilled" | "expired";
+}
+
 // Aggregated insight derived from a batch of JobPostings
 export interface JobInsights {
   totalPostings: number;
@@ -155,4 +234,7 @@ export interface JobInsights {
   sectorBreakdown: { sectorId: string; count: number; percentChange: number }[];
   criticalRolesCount: number;
   postingsByDay: { date: string; count: number }[];
+  sectorTimelines: { sectorId: string; series: { date: string; count: number }[] }[];
+  skillTimelines: { name: string; series: { date: string; count: number }[] }[];
+  totalSkillMentionsByDay: { date: string; count: number }[];
 }

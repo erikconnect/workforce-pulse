@@ -17,6 +17,7 @@ const JOBAPS_RSS_URL =
 const USAJOBS_API = "https://data.usajobs.gov/api/search";
 const USAJOBS_KEY = process.env.USAJOBS_API_KEY ?? "";
 const USAJOBS_EMAIL = process.env.USAJOBS_USER_AGENT ?? "WorkforcePulse/1.0";
+const API_FETCH_TIMEOUT_MS = 15000; // 15s for external APIs (Vercel serverless limit)
 
 // Extract text from XML tag
 function extractTag(xml: string, tag: string): string {
@@ -63,12 +64,31 @@ function classifyDept(department: string): string | null {
   return null;
 }
 
+async function fetchWithTimeout(
+  url: string,
+  opts: RequestInit & { timeout?: number }
+): Promise<Response> {
+  const { timeout = API_FETCH_TIMEOUT_MS, ...rest } = opts;
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res = await fetch(url, {
+      ...rest,
+      signal: ctrl.signal,
+      cache: "no-store",
+    });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 /** Fetch and upsert JobAps (City of Montgomery) jobs */
 async function fetchJobAps(): Promise<{ count: number; errors: string[] }> {
   const errors: string[] = [];
   try {
-    const res = await fetch(JOBAPS_RSS_URL, {
-      cache: "no-store",
+    const res = await fetchWithTimeout(JOBAPS_RSS_URL, {
+      timeout: API_FETCH_TIMEOUT_MS,
       headers: {
         "User-Agent": "WorkforcePulse/1.0",
         Accept: "application/rss+xml, application/xml",
@@ -118,8 +138,8 @@ async function fetchUsaJobs(): Promise<{ count: number; errors: string[] }> {
       ResultsPerPage: "100",
       Page: "1",
     });
-    const res = await fetch(`${USAJOBS_API}?${params}`, {
-      cache: "no-store",
+    const res = await fetchWithTimeout(`${USAJOBS_API}?${params}`, {
+      timeout: API_FETCH_TIMEOUT_MS,
       headers: {
         "User-Agent": USAJOBS_EMAIL,
         "Authorization-Key": USAJOBS_KEY,

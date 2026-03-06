@@ -1,12 +1,64 @@
 import type { Sector, SectorDetail, PulseStatus } from "../types";
 import { stubSectors } from "../stubs/sectors.stub";
 import { stubSectorDetails } from "../stubs/sector-detail.stub";
+import { stubRoles } from "../stubs/roles.stub";
+import { stubSkills } from "../stubs/skills.stub";
+import { stubMissions } from "../stubs/missions.stub";
+import { stubPlaybooks } from "../stubs/playbooks.stub";
 
 const USE_STUBS = process.env.NEXT_PUBLIC_USE_STUBS === "true";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 const ARCGIS_911_URL = process.env.NEXT_PUBLIC_ARCGIS_911_URL ?? "";
 const ARCGIS_PERMITS_URL = process.env.NEXT_PUBLIC_ARCGIS_PERMITS_URL ?? "";
+
+function buildFallbackHiringTrend(base: Sector) {
+  const monthLabels = ["Sep 2025", "Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026"];
+  const demandSeries = base.sparklineData?.length ? base.sparklineData.slice(-7) : [40, 42, 45, 44, 46, 48, 50];
+  const maxDemand = Math.max(...demandSeries, 1);
+
+  return demandSeries.map((value, index) => {
+    const hires = Math.max(8, Math.round((value / maxDemand) * (base.openRolesCount * 0.22)));
+    const attritionPressure = 100 - base.pulseScore;
+    const attrition = Math.max(6, Math.round(hires * (0.72 + attritionPressure / 180)));
+
+    return {
+      month: monthLabels[index] ?? `Month ${index + 1}`,
+      hires,
+      attrition,
+    };
+  });
+}
+
+function buildFallbackSectorDetail(id: string): SectorDetail | undefined {
+  if (stubSectorDetails[id]) return stubSectorDetails[id];
+
+  const base = stubSectors.find((sector) => sector.id === id);
+  if (!base) return undefined;
+
+  const criticalRoles = stubRoles
+    .filter((role) => role.sectorId === id)
+    .sort((a, b) => {
+      const urgencyWeight = { critical: 0, watch: 1, stable: 2 };
+      return (urgencyWeight[a.urgency] - urgencyWeight[b.urgency]) || (b.openCount - a.openCount);
+    })
+    .slice(0, 4);
+
+  const roleIds = new Set(criticalRoles.map((role) => role.id));
+  const skills = stubSkills
+    .filter((skill) => skill.relatedRoles.some((roleId) => roleIds.has(roleId)))
+    .sort((a, b) => b.growthRate - a.growthRate)
+    .slice(0, 6);
+
+  return {
+    ...base,
+    hiringTrend: buildFallbackHiringTrend(base),
+    criticalRoles,
+    skills,
+    missions: stubMissions.filter((mission) => mission.sectorId === id),
+    playbooks: stubPlaybooks.filter((playbook) => playbook.sectorId === id),
+  };
+}
 
 export async function fetchSectors(): Promise<Sector[]> {
   if (USE_STUBS) return stubSectors;
@@ -53,20 +105,14 @@ export async function fetchSectors(): Promise<Sector[]> {
 
 export async function fetchSectorById(id: string): Promise<SectorDetail | undefined> {
   if (USE_STUBS) {
-    // Return full detail if available, otherwise construct from base sector
-    if (stubSectorDetails[id]) return stubSectorDetails[id];
-    const base = stubSectors.find((s) => s.id === id);
-    if (!base) return undefined;
-    return {
-      ...base,
-      hiringTrend: [],
-      criticalRoles: [],
-      skills: [],
-      missions: [],
-      playbooks: [],
-    };
+    return buildFallbackSectorDetail(id);
   }
-  const res = await fetch(`${API}/sectors/${id}`);
-  if (!res.ok) throw new Error(`Failed to fetch sector ${id}`);
-  return res.json();
+
+  if (API) {
+    const res = await fetch(`${API}/sectors/${id}`);
+    if (!res.ok) throw new Error(`Failed to fetch sector ${id}`);
+    return res.json();
+  }
+
+  return buildFallbackSectorDetail(id);
 }

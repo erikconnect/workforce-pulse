@@ -16,12 +16,27 @@ import { NextResponse } from "next/server";
 
 export const revalidate = 3600;
 
+const FETCH_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: ctrl.signal,
+      next: init?.next ?? { revalidate: 3600 },
+    });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 // ArcGIS FeatureServer count query
 async function arcgisCount(url: string): Promise<number> {
   try {
-    const res = await fetch(
-      `${url}/query?where=1%3D1&returnCountOnly=true&f=json`,
-      { next: { revalidate: 3600 } }
+    const res = await fetchWithTimeout(
+      `${url}/query?where=1%3D1&returnCountOnly=true&f=json`
     );
     if (!res.ok) return 0;
     const json = await res.json();
@@ -94,8 +109,7 @@ export async function GET() {
     ARCGIS_911     ? arcgisCount(ARCGIS_911)     : Promise.resolve(0),
     ARCGIS_PERMITS ? arcgisCount(ARCGIS_PERMITS) : Promise.resolve(0),
     ARCGIS_POP     ? arcgisCount(ARCGIS_POP)     : Promise.resolve(0),
-    fetch(JOBAPS_RSS, {
-      next: { revalidate: 3600 },
+    fetchWithTimeout(JOBAPS_RSS, {
       headers: { "User-Agent": "WorkforcePulse/1.0" },
     }).catch(() => null),
   ]);

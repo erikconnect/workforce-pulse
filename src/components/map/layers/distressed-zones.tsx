@@ -44,8 +44,14 @@ export function DistressedZonesLayer() {
 
   const { data: permitsData } = useQuery<FeatureCollection>({
     queryKey: ["arcgis", "permits"],
-    queryFn: () => fetch("/api/arcgis/permits").then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/arcgis/permits")
+      const json = await r.json()
+      if (!r.ok) throw new Error(json.error ?? `HTTP ${r.status}`)
+      return json
+    },
     staleTime: 3600_000,
+    retry: 1,
   })
 
   // Extract coordinate arrays

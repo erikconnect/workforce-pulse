@@ -34,12 +34,27 @@ export async function GET(
 
   const queryUrl = `${queryBase}/query?where=1%3D1&outFields=*&returnGeometry=true&resultRecordCount=1000&f=geojson`
 
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
+
   try {
-    const res = await fetch(queryUrl, { next: { revalidate: 3600 } })
+    const res = await fetch(queryUrl, {
+      next: { revalidate: 3600 },
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "WorkforcePulse/1.0 (data visualization)",
+      },
+    })
+
+    clearTimeout(timeout)
 
     if (!res.ok) {
+      const text = await res.text().catch(() => "")
       return NextResponse.json(
-        { error: `ArcGIS returned ${res.status}` },
+        {
+          error: `ArcGIS returned ${res.status}`,
+          details: text.slice(0, 200),
+        },
         { status: 502 }
       )
     }
@@ -47,8 +62,14 @@ export async function GET(
     const data = await res.json()
     return NextResponse.json(data)
   } catch (err) {
+    clearTimeout(timeout)
+    const isTimeout = err instanceof Error && err.name === "AbortError"
     return NextResponse.json(
-      { error: `Failed to fetch ArcGIS layer: ${err instanceof Error ? err.message : "unknown"}` },
+      {
+        error: isTimeout
+          ? "ArcGIS request timed out"
+          : `Failed to fetch ArcGIS layer: ${err instanceof Error ? err.message : "unknown"}`,
+      },
       { status: 500 }
     )
   }

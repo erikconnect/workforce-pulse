@@ -41,7 +41,7 @@ export function CommandPalette() {
   }, [router])
 
   const pages = [
-    { label: "Dashboard", href: "/", icon: LayoutDashboard },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Sectors", href: "/sectors", icon: Building2 },
     { label: "Skills", href: "/skills", icon: Zap },
     { label: "Missions", href: "/missions", icon: Target },

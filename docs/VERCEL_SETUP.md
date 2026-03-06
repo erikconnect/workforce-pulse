@@ -24,6 +24,8 @@ In **Settings → Environment Variables**, add the variables below. Check **Prod
 
 | Name | Value | Description |
 |------|-------|-------------|
+| `NEXTAUTH_SECRET` | *Generate with `openssl rand -base64 32`* | Required for NextAuth session encryption |
+| `NEXTAUTH_URL` | `https://your-project.vercel.app` | Production URL (Vercel sets `VERCEL_URL` — use that for preview) |
 | `NEXT_PUBLIC_USE_STUBS` | `false` | Use real data in production |
 
 ### ArcGIS (Montgomery data)
@@ -65,6 +67,14 @@ After configuring:
 
 ---
 
-## 4. Cron (automatic aggregation)
+## 4. Auth URL for Vercel
 
-The `vercel.json` already defines the cron job for `/api/jobs/aggregate` every 6 hours. It runs automatically in production, as long as the `JOBAPS_RSS_URL` and `USAJOBS_*` variables are configured.
+Set `NEXTAUTH_URL` to your deployment URL:
+- **Production:** `https://workforce-pulse.vercel.app` (or your custom domain)
+- **Preview deployments:** `https://$VERCEL_URL` — Vercel substitutes `$VERCEL_URL` with the deployment URL
+
+The app uses `trustHost: true`, so NextAuth will work with Vercel's proxy headers.
+
+## 5. Cron (automatic aggregation)
+
+The `vercel.json` defines a daily cron for `/api/jobs/aggregate` (midnight UTC). Compatible with Vercel plans that allow one cron per day. Jobs are also aggregated on first request when the store is empty.

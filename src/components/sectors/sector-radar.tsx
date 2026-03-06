@@ -1,13 +1,7 @@
 "use client"
 
-import {
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  Radar,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import type { Sector } from "@/services/types"
 
 interface SectorRadarProps {
@@ -30,35 +24,14 @@ function computeDimensions(sector: Sector) {
   return { demand, growth, criticality, skillGap }
 }
 
-const STATUS_FILLS: Record<string, string> = {
-  critical: "rgba(239, 68, 68, 0.25)",
-  watch: "rgba(245, 158, 11, 0.2)",
-  stable: "rgba(34, 197, 94, 0.15)",
-}
-
-const STATUS_STROKES: Record<string, string> = {
-  critical: "#ef4444",
-  watch: "#f59e0b",
-  stable: "#22c55e",
+const STATUS_BADGE: Record<string, string> = {
+  critical: "border-red-300 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300",
+  watch: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300",
+  stable: "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-300",
 }
 
 export function SectorRadar({ sectors }: SectorRadarProps) {
   if (!sectors.length) return null
-
-  // Shape data so each data point is a dimension, with sector names as keys
-  const dimensions = ["Demand", "Growth", "Criticality", "Skills Gap"]
-  const data = dimensions.map((dim) => {
-    const row: Record<string, string | number> = { dimension: dim }
-    sectors.forEach((s) => {
-      const d = computeDimensions(s)
-      const key = dim.toLowerCase().replace(" ", "")
-      if (key === "demand") row[s.name] = d.demand
-      else if (key === "growth") row[s.name] = d.growth
-      else if (key === "criticality") row[s.name] = d.criticality
-      else if (key === "skillsgap") row[s.name] = d.skillGap
-    })
-    return row
-  })
 
   // Show top 4 most interesting sectors (2 critical/watch + 2 others)
   const critical = sectors.filter((s) => s.status === "critical").slice(0, 2)
@@ -66,35 +39,48 @@ export function SectorRadar({ sectors }: SectorRadarProps) {
   const displayed = [...critical, ...others].slice(0, 4)
 
   return (
-    <div className="w-full h-[280px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data} cx="50%" cy="50%" outerRadius="75%">
-          <PolarGrid stroke="hsl(var(--border))" />
-          <PolarAngleAxis
-            dataKey="dimension"
-            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
-              borderRadius: "8px",
-              fontSize: "12px",
-            }}
-          />
-          {displayed.map((sector) => (
-            <Radar
-              key={sector.id}
-              name={sector.name}
-              dataKey={sector.name}
-              stroke={STATUS_STROKES[sector.status]}
-              fill={STATUS_FILLS[sector.status]}
-              fillOpacity={0.6}
-              strokeWidth={2}
-            />
-          ))}
-        </RadarChart>
-      </ResponsiveContainer>
+    <div className="space-y-3">
+      {displayed.map((sector) => {
+        const d = computeDimensions(sector)
+        const metrics = [
+          { label: "Demand", value: Math.round(d.demand) },
+          { label: "Growth", value: Math.round(d.growth) },
+          { label: "Criticality", value: Math.round(d.criticality) },
+          { label: "Skills Gap", value: Math.round(d.skillGap) },
+        ]
+
+        return (
+          <div
+            key={sector.id}
+            className="rounded-2xl border border-white/35 bg-white/35 p-3 dark:border-white/10 dark:bg-white/5"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{sector.name}</p>
+                <p className="text-[11px] text-muted-foreground">Pulse {sector.pulseScore}</p>
+              </div>
+              <Badge variant="outline" className={STATUS_BADGE[sector.status]}>
+                {sector.status}
+              </Badge>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+                    <span>{metric.label}</span>
+                    <span>{metric.value}</span>
+                  </div>
+                  <Progress
+                    value={metric.value}
+                    className="h-1.5"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

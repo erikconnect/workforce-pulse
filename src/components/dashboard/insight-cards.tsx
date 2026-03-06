@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { AlertTriangle, TrendingUp, HelpCircle, Trophy, ChevronRight } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Insight } from "@/lib/insight-generator"
@@ -27,17 +26,17 @@ export function InsightCards({ insights }: InsightCardsProps) {
         const config = ICON_MAP[insight.icon]
         const Icon = config.icon
         return (
-          <Card
+          <div
             key={insight.id}
             className={cn(
-              "card-shadow card-hover-lift opacity-0 animate-fade-in-up",
+              "glass-card rounded-2xl card-hover-lift opacity-0 animate-fade-in-up",
               i === 0 && "animate-stagger-2",
               i === 1 && "animate-stagger-3",
               i === 2 && "animate-stagger-4",
             )}
             style={{ animationFillMode: "forwards" }}
           >
-            <CardContent className="pt-4 pb-3 space-y-2">
+            <div className="pt-4 pb-3 px-4 space-y-2">
               <div className="flex items-start gap-3">
                 <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", config.bg)}>
                   <Icon className={cn("h-4 w-4", config.color)} />
@@ -57,8 +56,8 @@ export function InsightCards({ insights }: InsightCardsProps) {
                   </Link>
                 </Button>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )
       })}
     </div>

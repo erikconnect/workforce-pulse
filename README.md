@@ -82,7 +82,7 @@ Jobs are aggregated **automatically** from multiple sources (no manual crawl req
 - **Indeed** — Via Bright Data Scraping Browser when `BRIGHT_DATA_BROWSER_WSS` is configured.
 - **LinkedIn, Glassdoor** — Use the Crawl Runner at `/crawl` with Bright Data Dataset IDs for on-demand enrichment.
 
-The job store is populated automatically on first load and refreshed every 6 hours. Vercel Cron hits `/api/jobs/aggregate` every 6 hours when deployed.
+The job store is populated automatically on first load and refreshed daily via Vercel Cron. When deployed, the cron runs once per day (midnight UTC); jobs also load on first request if the store is empty.
 
 ## Automatic Job Aggregation
 

@@ -24,9 +24,11 @@ export function LiveTicker() {
   const duration = postings.length * 4 // ~4s per item
 
   return (
-    <div className="relative w-full overflow-hidden bg-primary/5 border-b border-border h-8 flex items-center shrink-0">
+    <div className="relative w-full overflow-hidden glass-panel border-b border-glass-border-light dark:border-glass-border-dark h-8 flex items-center shrink-0 shadow-[inset_0_-1px_0_rgba(255,255,255,0.18),0_8px_18px_rgba(44,35,24,0.06)]">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[rgba(243,238,231,0.95)] to-transparent dark:from-[rgba(25,22,19,0.92)]" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[rgba(243,238,231,0.95)] to-transparent dark:from-[rgba(25,22,19,0.92)]" />
       <div
-        className="ticker-scroll flex items-center gap-8 whitespace-nowrap"
+        className="ticker-scroll flex items-center gap-8 whitespace-nowrap px-5"
         style={{ ["--ticker-duration" as string]: `${duration}s` }}
       >
         {items.map((p, i) => (

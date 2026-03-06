@@ -6,4 +6,6 @@ export * from "./api/missions";
 export * from "./api/playbooks";
 export * from "./api/workforce-data";
 export * from "./api/jobs";
+export * from "./api/community-profile";
+export * from "./api/benefits";
 export * from "./types";

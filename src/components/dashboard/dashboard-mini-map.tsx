@@ -20,22 +20,7 @@ const HealthScoresLayer = dynamic(
   { ssr: false }
 )
 
-const HeritageLayer = dynamic(
-  () => import("@/components/map/layers/heritage-layer").then((m) => m.HeritageLayer),
-  { ssr: false }
-)
-
-const JobsLayer = dynamic(
-  () => import("@/components/map/layers/jobs-layer").then((m) => m.JobsLayer),
-  { ssr: false }
-)
-
-const StationsLayer = dynamic(
-  () => import("@/components/map/layers/stations-layer").then((m) => m.StationsLayer),
-  { ssr: false }
-)
-
-export function DashboardMiniMap() {
+export function DashboardMiniMap({ embedded = false }: { embedded?: boolean }) {
   const { data: summary } = useQuery({ queryKey: ["pulseSummary"], queryFn: fetchPulseSummary })
   const { data: sectors } = useQuery({ queryKey: ["sectors"], queryFn: fetchSectors })
 
@@ -43,16 +28,14 @@ export function DashboardMiniMap() {
   const totalOpenRoles = sectors?.reduce((sum, s) => sum + s.openRolesCount, 0) ?? 0
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-border h-[280px]">
+    <div className={`relative overflow-hidden h-[320px] lg:h-[400px] bg-[#f0eee9] dark:bg-[#3a3a3a] ${embedded ? "rounded-[28px]" : "rounded-xl"}`}>
       <MontgomeryMapInner className="h-full w-full" zoom={11}>
         <HealthScoresLayer />
-        <HeritageLayer />
-        <JobsLayer />
-        <StationsLayer />
       </MontgomeryMapInner>
+      <div className="absolute inset-0 dashboard-map-fade z-[450]" aria-hidden />
 
       {/* Workforce legend overlay */}
-      <div className="absolute bottom-2 left-2 z-[1000] rounded-md bg-card/90 backdrop-blur px-2.5 py-2 text-[10px] border border-border shadow-sm space-y-1">
+      <div className="absolute bottom-2 left-2 z-[1000] rounded-lg bg-white/20 backdrop-blur-md px-2.5 py-2 text-[10px] border border-white/30 shadow-sm space-y-1">
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <AlertTriangle className="h-3 w-3 text-pulse-critical" />
           <span>{summary?.criticalRolesCount ?? 0} critical roles</span>
@@ -69,7 +52,7 @@ export function DashboardMiniMap() {
 
       <Link
         href="/map"
-        className="absolute bottom-2 right-2 z-[1000] flex items-center gap-1 rounded-md bg-card/90 backdrop-blur px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm border border-border hover:bg-card transition-colors"
+        className="absolute bottom-2 right-2 z-[1000] flex items-center gap-1 rounded-lg bg-white/20 backdrop-blur-md px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm border border-white/30 hover:bg-white/30 transition-colors"
       >
         Full map <ExternalLink className="h-3 w-3" />
       </Link>

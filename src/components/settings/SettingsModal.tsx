@@ -19,7 +19,7 @@ export function SettingsModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Settings">
+        <Button variant="ghost" size="icon" aria-label="Settings" data-settings-trigger>
           <Settings className="h-5 w-5" />
         </Button>
       </DialogTrigger>
