@@ -7,6 +7,7 @@ interface PulseRingProps {
   size?: number // SVG size in px, default 80
   strokeWidth?: number
   className?: string
+  animate?: boolean // enable heartbeat/breathe animation, default true
 }
 
 const STATUS_COLOR: Record<PulseStatus, string> = {
@@ -15,12 +16,19 @@ const STATUS_COLOR: Record<PulseStatus, string> = {
   stable: "#22c55e",
 }
 
+const STATUS_ANIMATION: Record<PulseStatus, string> = {
+  critical: "pulse-heartbeat",
+  watch: "pulse-breathe",
+  stable: "pulse-calm",
+}
+
 export function PulseRing({
   score,
   status,
   size = 80,
   strokeWidth = 7,
   className,
+  animate = true,
 }: PulseRingProps) {
   const center = size / 2
   const radius = center - strokeWidth
@@ -37,6 +45,7 @@ export function PulseRing({
       className={cn(
         "rotate-[-90deg] transition-opacity hover:opacity-90",
         status === "critical" && "drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]",
+        animate && STATUS_ANIMATION[status],
         className
       )}
       aria-label={`Pulse score ${score}`}
@@ -70,9 +79,8 @@ export function PulseRing({
         y={center}
         textAnchor="middle"
         dominantBaseline="central"
+        transform={`rotate(90, ${center}, ${center})`}
         style={{
-          transform: `rotate(90deg)`,
-          transformOrigin: `${center}px ${center}px`,
           fontSize: size * 0.22,
           fontWeight: 700,
           fill: color,

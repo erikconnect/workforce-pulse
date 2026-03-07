@@ -118,10 +118,28 @@ export interface CityJobsResponse {
   jobs: CityJob[];
 }
 
+const JOBAPS_RSS =
+  process.env.JOBAPS_RSS_URL ?? "https://jobapscloud.com/MGM/rss.asp";
+const FETCH_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      ...init,
+      signal: ctrl.signal,
+      next: init?.next ?? { revalidate: 3600 },
+    });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 export async function GET() {
   try {
-    const res = await fetch("https://jobapscloud.com/MGM/rss.asp", {
-      next: { revalidate: 3600 },
+    const res = await fetchWithTimeout(JOBAPS_RSS, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; WorkforcePulse/1.0; +https://workforcepulse.gov)",
         Accept: "application/rss+xml, application/xml, text/xml",

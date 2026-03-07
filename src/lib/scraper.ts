@@ -19,7 +19,7 @@ export interface ScrapedJob {
   date_posted: string;
   description: string;
   url: string;
-  source: "indeed";
+  source: "indeed" | "linkedin" | "glassdoor";
 }
 
 // Default search queries — focused on Montgomery, AL critical sectors
@@ -147,8 +147,194 @@ async function scrapeIndeedPage(
 }
 
 // ---------------------------------------------------------------------------
-// Main export — scrape all queries in one browser session
+// LinkedIn scraper — one search result page per query
 // ---------------------------------------------------------------------------
+
+async function scrapeLinkedInPage(
+  page: Page,
+  keyword: string,
+  location: string
+): Promise<ScrapedJob[]> {
+  const url =
+    `https://www.linkedin.com/jobs/search/` +
+    `?keywords=${encodeURIComponent(keyword)}` +
+    `&location=${encodeURIComponent(location)}` +
+    `&f_TPR=r2592000` + // last 30 days
+    `&position=1&pageNum=0`;
+
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+
+  // Wait for job cards
+  await page
+    .waitForSelector('.job-search-card, .jobs-search-results__list-item', {
+      timeout: 8_000,
+    })
+    .catch(() => null);
+
+  const jobs = await page.evaluate((): ScrapedJob[] => {
+    const cardEls = Array.from(
+      document.querySelectorAll('.job-search-card, .jobs-search-results__list-item')
+    );
+
+    function text(el: Element | null): string {
+      return el?.textContent?.trim() ?? "";
+    }
+
+    function attr(el: Element | null, name: string): string {
+      return el?.getAttribute(name) ?? "";
+    }
+
+    return cardEls.slice(0, 20).map((card): ScrapedJob => {
+      const jobId =
+        attr(card, 'data-entity-urn')?.split(':').pop() ??
+        attr(card.querySelector('a'), 'data-tracking-id') ??
+        null;
+
+      const title =
+        text(card.querySelector('.base-search-card__title')) ||
+        text(card.querySelector('h3')) ||
+        "";
+
+      const company =
+        text(card.querySelector('.base-search-card__subtitle')) ||
+        text(card.querySelector('h4')) ||
+        "";
+
+      const location =
+        text(card.querySelector('.job-search-card__location')) ||
+        "";
+
+      const date =
+        text(card.querySelector('time')) ||
+        text(card.querySelector('.job-search-card__listdate')) ||
+        "";
+
+      const snippet =
+        text(card.querySelector('.base-search-card__metadata')) ||
+        "";
+
+      return {
+        job_id: jobId,
+        title,
+        company_name: company,
+        location,
+        date_posted: date,
+        description: snippet,
+        url: jobId ? `https://www.linkedin.com/jobs/view/${jobId}` : "",
+        source: "linkedin",
+      };
+    });
+  });
+
+  return jobs.filter((j) => j.title.length > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Glassdoor scraper — one search result page per query
+// ---------------------------------------------------------------------------
+
+async function scrapeGlassroomPage(
+  page: Page,
+  keyword: string,
+  location: string
+): Promise<ScrapedJob[]> {
+  const url =
+    `https://www.glassdoor.com/Job/jobs.htm` +
+    `?keyword=${encodeURIComponent(keyword)}` +
+    `&location=${encodeURIComponent(location)}` +
+    `&fromage=30` +
+    `&sort_by=date_desc`;
+
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+
+  // Wait for job cards
+  await page
+    .waitForSelector('[data-id], .JobCard_jobCardContainer, li[class*="JobCard"]', {
+      timeout: 8_000,
+    })
+    .catch(() => null);
+
+  const jobs = await page.evaluate((): ScrapedJob[] => {
+    const cardEls: Element[] = [];
+    const selectors = [
+      '[data-id]',
+      '.JobCard_jobCardContainer',
+      'li[class*="JobCard"]',
+      'div[class*="JobCard"]',
+    ];
+    for (const sel of selectors) {
+      const found = Array.from(document.querySelectorAll(sel));
+      if (found.length > 0) {
+        cardEls.push(...found);
+        break;
+      }
+    }
+
+    function text(el: Element | null): string {
+      return el?.textContent?.trim() ?? "";
+    }
+
+    function attr(el: Element | null, name: string): string {
+      return el?.getAttribute(name) ?? "";
+    }
+
+    return cardEls.slice(0, 20).map((card): ScrapedJob => {
+      // --- job_id ---
+      const id =
+        attr(card, 'data-id') ??
+        attr(card.querySelector('a'), 'data-id') ??
+        null;
+
+      // --- title ---
+      const title =
+        text(card.querySelector('[class*="jobTitle"]')) ||
+        text(card.querySelector('a[class*="Title"]')) ||
+        text(card.querySelector('h2')) ||
+        text(card.querySelector('h3')) ||
+        "";
+
+      // --- company ---
+      const company =
+        text(card.querySelector('[class*="employer"]')) ||
+        text(card.querySelector('[class*="company"]')) ||
+        text(card.querySelector('p[class*="Company"]')) ||
+        "";
+
+      // --- location ---
+      const location =
+        text(card.querySelector('[class*="location"]')) ||
+        text(card.querySelector('[class*="Location"]')) ||
+        "";
+
+      // --- date ---
+      const date =
+        text(card.querySelector('[class*="date"]')) ||
+        text(card.querySelector('time')) ||
+        text(card.querySelector('[class*="Date"]')) ||
+        "";
+
+      // --- snippet ---
+      const snippet =
+        text(card.querySelector('[class*="jobSnippet"]')) ||
+        text(card.querySelector('[class*="snippet"]')) ||
+        text(card.querySelector('[class*="description"]')) ||
+        "";
+
+      return {
+        job_id: id,
+        title,
+        company_name: company,
+        location,
+        date_posted: date,
+        description: snippet,
+        url: id ? `https://www.glassdoor.com/job-listing/JL_KQ0,${id}.htm` : "",
+        source: "glassdoor",
+      };
+    });
+  });
+
+  return jobs.filter((j) => j.title.length > 0);
+}
 
 export interface ScrapeResult {
   jobs: ScrapedJob[];
@@ -188,6 +374,104 @@ export async function scrapeIndeedJobs(
   }
 
   // Deduplicate by job_id (same posting can appear for multiple keywords)
+  const seen = new Set<string>();
+  const unique = allJobs.filter((job) => {
+    const key = job.job_id ?? `${job.title}::${job.company_name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return {
+    jobs: unique,
+    queriesRun: queries.length,
+    queriesFailed,
+    durationMs: Date.now() - start,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LinkedIn scraper — main export function
+// ---------------------------------------------------------------------------
+
+export async function scrapeLinkedInJobs(
+  queries: readonly { keyword: string; location: string }[] = DEFAULT_SCRAPE_QUERIES
+): Promise<ScrapeResult> {
+  if (!BROWSER_WSS) {
+    throw new Error("BRIGHT_DATA_BROWSER_WSS is not configured");
+  }
+
+  const start = Date.now();
+  const allJobs: ScrapedJob[] = [];
+  let queriesFailed = 0;
+
+  const browser = await chromium.connectOverCDP(BROWSER_WSS);
+
+  try {
+    for (const { keyword, location } of queries) {
+      const page = await browser.newPage();
+      try {
+        const jobs = await scrapeLinkedInPage(page, keyword, location);
+        allJobs.push(...jobs);
+      } catch {
+        queriesFailed++;
+      } finally {
+        await page.close();
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+
+  const seen = new Set<string>();
+  const unique = allJobs.filter((job) => {
+    const key = job.job_id ?? `${job.title}::${job.company_name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return {
+    jobs: unique,
+    queriesRun: queries.length,
+    queriesFailed,
+    durationMs: Date.now() - start,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Glassdoor scraper — main export function
+// ---------------------------------------------------------------------------
+
+export async function scrapeGlassdoorJobs(
+  queries: readonly { keyword: string; location: string }[] = DEFAULT_SCRAPE_QUERIES
+): Promise<ScrapeResult> {
+  if (!BROWSER_WSS) {
+    throw new Error("BRIGHT_DATA_BROWSER_WSS is not configured");
+  }
+
+  const start = Date.now();
+  const allJobs: ScrapedJob[] = [];
+  let queriesFailed = 0;
+
+  const browser = await chromium.connectOverCDP(BROWSER_WSS);
+
+  try {
+    for (const { keyword, location } of queries) {
+      const page = await browser.newPage();
+      try {
+        const jobs = await scrapeGlassroomPage(page, keyword, location);
+        allJobs.push(...jobs);
+      } catch {
+        queriesFailed++;
+      } finally {
+        await page.close();
+      }
+    }
+  } finally {
+    await browser.close();
+  }
+
   const seen = new Set<string>();
   const unique = allJobs.filter((job) => {
     const key = job.job_id ?? `${job.title}::${job.company_name}`;

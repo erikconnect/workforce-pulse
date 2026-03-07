@@ -1,4 +1,4 @@
-import type { Mission } from "../types";
+import type { Mission, MissionMemberProfile } from "../types";
 
 export const stubMissions: Mission[] = [
   {
@@ -10,6 +10,10 @@ export const stubMissions: Mission[] = [
     priority: "critical",
     progress: 25,
     sectorId: "public-safety",
+    rewardPoints: 180,
+    participantCount: 34,
+    communityImpact: "Reduce emergency response staffing gaps across police, fire, and EMS teams before summer demand peaks.",
+    tags: ["Recruitment", "Training", "Fast-track"],
     assignee: "J. Martinez",
     dueDate: "2026-04-30",
     steps: [
@@ -61,6 +65,10 @@ export const stubMissions: Mission[] = [
     priority: "watch",
     progress: 67,
     sectorId: "healthcare",
+    rewardPoints: 140,
+    participantCount: 21,
+    communityImpact: "Build local healthcare tech capacity so residents get faster coding, intake, and records support.",
+    tags: ["Upskilling", "Certification", "Healthcare IT"],
     assignee: "L. Thompson",
     dueDate: "2026-03-31",
     steps: [
@@ -104,6 +112,10 @@ export const stubMissions: Mission[] = [
     priority: "critical",
     progress: 50,
     sectorId: "logistics",
+    rewardPoints: 220,
+    participantCount: 43,
+    communityImpact: "Stabilize freight and municipal logistics staffing ahead of peak shipping season and service demand.",
+    tags: ["Hiring Sprint", "CDL", "HazMat"],
     assignee: "R. Davis",
     dueDate: "2026-04-15",
     steps: [
@@ -154,6 +166,10 @@ export const stubMissions: Mission[] = [
     priority: "watch",
     progress: 33,
     sectorId: "technology",
+    rewardPoints: 160,
+    participantCount: 18,
+    communityImpact: "Grow a reliable local cloud and cybersecurity pipeline instead of competing for the same external talent pool.",
+    tags: ["Pipeline", "Internships", "Cybersecurity"],
     assignee: "S. Patel",
     dueDate: "2026-06-30",
     steps: [
@@ -195,6 +211,10 @@ export const stubMissions: Mission[] = [
     priority: "stable",
     progress: 0,
     sectorId: "retail",
+    rewardPoints: 95,
+    participantCount: 12,
+    communityImpact: "Prepare neighborhood retail employers for seasonal demand without last-minute labor shortages.",
+    tags: ["Seasonal", "Onboarding", "Retail Ops"],
     assignee: undefined,
     dueDate: "2026-10-01",
     steps: [
@@ -236,6 +256,10 @@ export const stubMissions: Mission[] = [
     priority: "watch",
     progress: 50,
     sectorId: "construction",
+    rewardPoints: 150,
+    participantCount: 17,
+    communityImpact: "Close critical construction skill gaps so capital projects do not stall on certification bottlenecks.",
+    tags: ["Skills Mapping", "Training Providers", "Construction"],
     assignee: "K. Williams",
     dueDate: "2026-05-31",
     steps: [
@@ -285,6 +309,10 @@ export const stubMissions: Mission[] = [
     priority: "stable",
     progress: 100,
     sectorId: "finance",
+    rewardPoints: 130,
+    participantCount: 9,
+    communityImpact: "Protect continuity in finance operations by building bench strength for senior public-sector roles.",
+    tags: ["Succession", "Mentorship", "Leadership"],
     assignee: "A. Johnson",
     dueDate: "2026-01-31",
     steps: [
@@ -326,6 +354,10 @@ export const stubMissions: Mission[] = [
     priority: "watch",
     progress: 100,
     sectorId: "education",
+    rewardPoints: 145,
+    participantCount: 26,
+    communityImpact: "Keep more instructors in classrooms through stronger compensation signals and career development support.",
+    tags: ["Retention", "Compensation", "Professional Development"],
     assignee: "M. Chen",
     dueDate: "2026-02-28",
     steps: [
@@ -368,3 +400,44 @@ export const stubMissions: Mission[] = [
     ],
   },
 ];
+
+export const stubMissionMemberProfile: MissionMemberProfile = {
+  id: "member-city-admin",
+  name: "City Admin",
+  role: "Community Workforce Lead",
+  city: "Montgomery, AL",
+  level: 4,
+  points: 820,
+  nextLevelPoints: 1000,
+  streak: 6,
+  missionPoints: 540,
+  skillPoints: 120,
+  sectorPoints: 80,
+  playbookPoints: 80,
+  completedMissionCount: 2,
+  activeMissionCount: 5,
+  contributedSteps: 11,
+  helpedWorkers: 148,
+  playbooksCreated: 1,
+  playbooksLiked: 3,
+  playbooksSaved: 4,
+  skillActionsCompleted: 5,
+  sectorActionsCompleted: 3,
+  badges: [
+    {
+      id: "systems-builder",
+      label: "Systems Builder",
+      description: "Created repeatable workforce interventions across multiple sectors.",
+    },
+    {
+      id: "field-connector",
+      label: "Field Connector",
+      description: "Linked community partners and training pathways to live hiring demand.",
+    },
+    {
+      id: "streak-runner",
+      label: "Streak Runner",
+      description: "Stayed active in mission delivery for six consecutive cycles.",
+    },
+  ],
+};

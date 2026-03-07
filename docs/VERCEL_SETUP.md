@@ -1,0 +1,80 @@
+# Vercel Setup — workforce-pulse
+
+Guide to connect the GitHub repository and configure environment variables in the Vercel project.
+
+## 1. Connect GitHub repository
+
+1. Access: [https://vercel.com/erikconnects-projects/workforce-pulse](https://vercel.com/erikconnects-projects/workforce-pulse)
+2. Click **Settings** in the project menu.
+3. In the **Git** section, click **Connect Git Repository**.
+4. Choose **GitHub** and authorize if necessary.
+5. Select the repository: `erikconnect/workforce-pulse`
+6. Choose the branch: `main`
+7. Save.
+
+After connecting, each push to `main` will trigger an automatic deployment.
+
+---
+
+## 2. Environment Variables
+
+In **Settings → Environment Variables**, add the variables below. Check **Production**, **Preview**, and **Development** as needed.
+
+### Required for basic functionality
+
+| Name | Value | Description |
+|------|-------|-------------|
+| `NEXTAUTH_SECRET` | *Generate with `openssl rand -base64 32`* | Required for NextAuth session encryption |
+| `NEXTAUTH_URL` | `https://your-project.vercel.app` | Production URL (Vercel sets `VERCEL_URL` — use that for preview) |
+| `NEXT_PUBLIC_USE_STUBS` | `false` | Use real data in production |
+
+### ArcGIS (Montgomery data)
+
+| Name | Value |
+|------|-------|
+| `NEXT_PUBLIC_ARCGIS_911_URL` | `https://services7.arcgis.com/xNUwUjOJqYE54USz/arcgis/rest/services/911_Calls_Data/FeatureServer/0` |
+| `NEXT_PUBLIC_ARCGIS_PERMITS_URL` | `https://gis.montgomeryal.gov/server/rest/services/HostedDatasets/Construction_Permits/FeatureServer/0` |
+| `NEXT_PUBLIC_ARCGIS_POPULATION_URL` | `https://services7.arcgis.com/xNUwUjOJqYE54USz/arcgis/rest/services/Daily_Population_Trends/FeatureServer/0` |
+
+### JobAps (Montgomery jobs)
+
+| Name | Value |
+|------|-------|
+| `JOBAPS_RSS_URL` | `https://jobapscloud.com/MGM/rss.asp` |
+
+### USAJOBS (federal jobs)
+
+| Name | Value |
+|------|-------|
+| `USAJOBS_API_KEY` | *your API key from developer.usajobs.gov* |
+| `USAJOBS_USER_AGENT` | *your registered email* |
+
+### Bright Data (optional — Crawl Runner / Indeed)
+
+| Name | Value |
+|------|-------|
+| `BRIGHT_DATA_API_KEY` | *your API key* |
+| `BRIGHT_DATA_BROWSER_WSS` | *Scraping Browser WebSocket URL* |
+
+---
+
+## 3. Deploy
+
+After configuring:
+
+1. **Redeploy** in **Deployments** → ⋮ on the latest deployment → **Redeploy**
+2. Or make a new push to `main` on GitHub to trigger automatic deployment.
+
+---
+
+## 4. Auth URL for Vercel
+
+Set `NEXTAUTH_URL` to your deployment URL:
+- **Production:** `https://workforce-pulse.vercel.app` (or your custom domain)
+- **Preview deployments:** `https://$VERCEL_URL` — Vercel substitutes `$VERCEL_URL` with the deployment URL
+
+NextAuth v4 uses the `NEXTAUTH_URL` environment variable for host verification behind Vercel's proxy. Ensure this variable is set correctly for each environment.
+
+## 5. Cron (automatic aggregation)
+
+The `vercel.json` defines a daily cron for `/api/jobs/aggregate` (midnight UTC). Compatible with Vercel plans that allow one cron per day. Jobs are also aggregated on first request when the store is empty.

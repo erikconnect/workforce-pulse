@@ -1,5 +1,6 @@
 import type { Playbook, CreatePlaybookPayload } from "../types";
 import { stubPlaybooks } from "../stubs/playbooks.stub";
+import { recordPlaybookAction } from "./community-profile";
 
 const USE_STUBS = process.env.NEXT_PUBLIC_USE_STUBS === "true";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -27,11 +28,17 @@ export async function createPlaybook(payload: CreatePlaybookPayload): Promise<Pl
       likes: 0,
       saves: 0,
       createdAt: new Date().toISOString(),
+      rewardPoints: 18 + payload.steps.length * 2,
+      estimatedHours: Math.max(4, payload.steps.length * 2),
+      difficulty: payload.steps.length >= 5 ? "advanced" : payload.steps.length >= 3 ? "operator" : "starter",
+      impactSummary: "Community-authored playbook ready to operationalize workforce improvements across this sector.",
+      linkedSkills: payload.tags.slice(0, 4),
       steps: payload.steps,
       hasLiked: false,
       hasSaved: false,
     };
     mutablePlaybooks = [newPlaybook, ...mutablePlaybooks];
+    recordPlaybookAction(newPlaybook.id, "create", true);
     return newPlaybook;
   }
   const res = await fetch(`${API}/playbooks`, {
@@ -49,6 +56,7 @@ export async function likePlaybook(id: string): Promise<{ likes: number }> {
     if (!playbook) throw new Error(`Playbook ${id} not found`);
     playbook.hasLiked = !playbook.hasLiked;
     playbook.likes += playbook.hasLiked ? 1 : -1;
+    recordPlaybookAction(playbook.id, "like", playbook.hasLiked);
     return { likes: playbook.likes };
   }
   const res = await fetch(`${API}/playbooks/${id}/like`, { method: "POST" });
@@ -62,6 +70,7 @@ export async function savePlaybook(id: string): Promise<{ saves: number }> {
     if (!playbook) throw new Error(`Playbook ${id} not found`);
     playbook.hasSaved = !playbook.hasSaved;
     playbook.saves += playbook.hasSaved ? 1 : -1;
+    recordPlaybookAction(playbook.id, "save", playbook.hasSaved);
     return { saves: playbook.saves };
   }
   const res = await fetch(`${API}/playbooks/${id}/save`, { method: "POST" });

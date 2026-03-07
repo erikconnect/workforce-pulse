@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
-import { DM_Sans, Libre_Baskerville } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import { Providers } from "@/components/providers";
-import { AppShell } from "@/components/layout/app-shell";
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const libreBaskerville = Libre_Baskerville({
+const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["400", "700"],
+  weight: ["400", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -30,13 +30,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${dmSans.variable} ${libreBaskerville.variable} font-sans antialiased`}>
-        <Providers>
-          <AppShell>
-            {children}
-          </AppShell>
-        </Providers>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} ${playfairDisplay.variable} font-sans antialiased`}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
