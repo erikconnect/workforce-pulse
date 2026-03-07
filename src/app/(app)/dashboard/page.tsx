@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Phone, GraduationCap, CheckCircle2, MoreVertical, Trophy, Flame, Target } from "lucide-react"
 import { fetchMissionMemberProfile, fetchPulseSummary, fetchSectors } from "@/services"
@@ -125,6 +125,8 @@ function MiniTimelineChart({
 
 export default function DashboardPage() {
   const userName = "City Admin"
+  const [greeting, setGreeting] = useState("Hello")
+  
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["pulseSummary"],
     queryFn: fetchPulseSummary,
@@ -141,6 +143,14 @@ export default function DashboardPage() {
 
   const { data: workforceData } = useWorkforceData()
   const { data: jobInsights } = useJobInsights()
+
+  useEffect(() => {
+    const now = new Date()
+    const hour = now.getHours()
+    const greetingText =
+      hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+    setGreeting(greetingText)
+  }, [])
 
   const criticalRolesCount = useMemo(() => {
     if (jobInsights?.insights?.criticalRolesCount != null) return jobInsights.insights.criticalRolesCount
@@ -210,10 +220,6 @@ export default function DashboardPage() {
     return Array.from({ length: 5 }, (_, index) => index < activeCount)
   }, [summary?.checkInCompleted, summary?.checkInStreak])
 
-  const now = new Date()
-  const hour = now.getHours()
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const criticalRolesCaption =
     criticalRolesCount > 0
       ? "Dispatch, patrol and emergency response roles are driving current pressure."
@@ -227,7 +233,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="space-y-4 opacity-0 animate-fade-in-up" style={{ animationFillMode: "forwards" }}>
         <div className="mb-6">
-          <h1 className="font-display text-4xl font-medium tracking-tight text-foreground">
+          <h1 className="font-display text-4xl font-medium tracking-tight text-foreground" suppressHydrationWarning>
             {greeting}, {userName}
           </h1>
         </div>

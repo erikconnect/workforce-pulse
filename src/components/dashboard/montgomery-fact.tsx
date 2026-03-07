@@ -20,8 +20,10 @@ const FACTS = [
 export function MontgomeryFact({ compact = false, className }: { compact?: boolean; className?: string }) {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     setIndex(Math.floor(Math.random() * FACTS.length))
   }, [])
 
@@ -65,8 +67,9 @@ export function MontgomeryFact({ compact = false, className }: { compact?: boole
           className={cn(`text-xs text-muted-foreground leading-relaxed transition-opacity duration-200 ${
             visible ? "opacity-100" : "opacity-0"
           }`, compact && "text-sm text-white/88")}
+          suppressHydrationWarning
         >
-          {FACTS[index]}
+          {mounted ? FACTS[index] : FACTS[0]}
         </p>
       </div>
       {!compact && (
