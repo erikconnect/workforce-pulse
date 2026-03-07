@@ -8,6 +8,7 @@ import { LiveTicker } from "./live-ticker"
 import { CommandPalette } from "./command-palette"
 import { GuidedTour } from "./guided-tour"
 import { useTour } from "@/hooks/use-tour"
+import { useScrapeJobs } from "@/hooks/use-scrape-jobs"
 
 interface AppShellProps {
   children: React.ReactNode
@@ -16,6 +17,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const tour = useTour()
+  useScrapeJobs() // Auto-trigger scrape on mount
   return (
     <div className="relative min-h-screen overflow-hidden bg-background p-3 md:p-5">
       <div className="absolute inset-0 glass-page-bg pointer-events-none z-0" aria-hidden />

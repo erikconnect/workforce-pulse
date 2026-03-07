@@ -129,9 +129,26 @@ export interface RawLinkedInRecord {
   company_name?: string;
   location?: string;
   date?: string;
+  date_posted?: string;
   description?: string;
   url?: string;
   employment_type?: string;
+}
+
+// Bright Data Glassdoor scraper field names
+export interface RawGlassdoorRecord {
+  job_id?: string;
+  id?: string;
+  title?: string;
+  company_name?: string;
+  company?: string;
+  location?: string;
+  date?: string;
+  date_posted?: string;
+  description?: string;
+  url?: string;
+  salary?: string;
+  job_type?: string;
 }
 
 // JobAps (City of Montgomery RSS) record → JobPosting
@@ -220,13 +237,35 @@ export function normalizeLinkedInRecord(raw: RawLinkedInRecord): JobPosting {
     title,
     org: raw.company_name ?? "Unknown",
     location: raw.location ?? "Montgomery, AL",
-    postedDate: raw.date ?? new Date().toISOString(),
+    postedDate: raw.date_posted ?? raw.date ?? new Date().toISOString(),
     description,
     source: "linkedin",
     url: raw.url ?? "",
     sectorId,
     extractedSkills,
     jobType: raw.employment_type,
+  };
+}
+
+export function normalizeGlassdoorRecord(raw: RawGlassdoorRecord): JobPosting {
+  const title = raw.title ?? "";
+  const description = raw.description ?? "";
+  const sectorId = classifySector(title, description);
+  const extractedSkills = extractSkills(description);
+
+  return {
+    id: raw.job_id ?? raw.id ?? crypto.randomUUID(),
+    title,
+    org: raw.company_name ?? raw.company ?? "Unknown",
+    location: raw.location ?? "Montgomery, AL",
+    postedDate: raw.date_posted ?? raw.date ?? new Date().toISOString(),
+    description,
+    source: "glassdoor",
+    url: raw.url ?? "",
+    sectorId,
+    extractedSkills,
+    salary: raw.salary,
+    jobType: raw.job_type,
   };
 }
 

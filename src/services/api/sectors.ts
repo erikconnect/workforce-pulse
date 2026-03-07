@@ -12,6 +12,48 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 const ARCGIS_911_URL = process.env.NEXT_PUBLIC_ARCGIS_911_URL ?? "";
 const ARCGIS_PERMITS_URL = process.env.NEXT_PUBLIC_ARCGIS_PERMITS_URL ?? "";
 
+/**
+ * Helper: Enrich stub sectors with real job posting data
+ */
+async function enrichSectorsWithJobData(baseSectors: Sector[]): Promise<Sector[]> {
+  try {
+    // Fetch job insights from /api/jobs
+    const jobRes = await fetch("http://localhost:3000/api/jobs", {
+      cache: "no-store",
+    }).catch(() => null);
+
+    if (!jobRes || !jobRes.ok) {
+      // Jobs API unavailable — return stub sectors as-is
+      return baseSectors;
+    }
+
+    type SectorBreakdown = { sectorId: string; count: number; percentChange: number };
+    const jobData = (await jobRes.json()) as { insights?: { sectorBreakdown?: SectorBreakdown[] } };
+    const sectorBreakdown = jobData.insights?.sectorBreakdown ?? [];
+
+    // Update sectors with job counts
+    return baseSectors.map((sector) => {
+      const jobsInSector = sectorBreakdown.find((sb: SectorBreakdown) => sb.sectorId === sector.id);
+      const openJobCount = jobsInSector?.count ?? 0;
+
+      // Calculate pulse score based on open jobs
+      // More jobs = higher pressure, so higher score
+      const score = Math.min(100, Math.round((openJobCount / 5) * 100));
+      const status: PulseStatus = score >= 75 ? "critical" : score >= 45 ? "watch" : "stable";
+
+      return {
+        ...sector,
+        openRolesCount: openJobCount,
+        pulseScore: score,
+        status,
+      };
+    });
+  } catch {
+    // Silently fall back to stub sectors if enrichment fails
+    return baseSectors;
+  }
+}
+
 function buildFallbackHiringTrend(base: Sector) {
   const monthLabels = ["Sep 2025", "Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026"];
   const demandSeries = base.sparklineData?.length ? base.sparklineData.slice(-7) : [40, 42, 45, 44, 46, 48, 50];
@@ -61,7 +103,11 @@ function buildFallbackSectorDetail(id: string): SectorDetail | undefined {
 }
 
 export async function fetchSectors(): Promise<Sector[]> {
-  if (USE_STUBS) return stubSectors;
+  if (USE_STUBS) {
+    // Try to enrich stubs with real job data
+    const enriched = await enrichSectorsWithJobData(stubSectors);
+    return enriched;
+  }
 
   // If a REST API is configured, use it
   if (API) {
@@ -70,7 +116,7 @@ export async function fetchSectors(): Promise<Sector[]> {
     return res.json();
   }
 
-  // Otherwise augment stub data with live ArcGIS counts
+  // Otherwise augment stub data with live ArcGIS counts + job data
   try {
     const [callsRes, permitsRes] = await Promise.all([
       ARCGIS_911_URL
@@ -84,7 +130,7 @@ export async function fetchSectors(): Promise<Sector[]> {
     const callCount: number = callsRes ? (await callsRes.json()).count ?? 0 : 0;
     const permitCount: number = permitsRes ? (await permitsRes.json()).count ?? 0 : 0;
 
-    return stubSectors.map((sector) => {
+    const arcgisEnriched = stubSectors.map((sector) => {
       if (sector.id === "public-safety" && callCount > 0) {
         const score = Math.min(100, Math.round(callCount / 50));
         const status: PulseStatus = score >= 75 ? "critical" : score >= 45 ? "watch" : "stable";
@@ -97,9 +143,14 @@ export async function fetchSectors(): Promise<Sector[]> {
       }
       return sector;
     });
+
+    // Also try to enrich with job data for other sectors
+    const jobEnriched = await enrichSectorsWithJobData(arcgisEnriched);
+    return jobEnriched;
   } catch {
-    // ArcGIS unreachable — fall back to stubs silently
-    return stubSectors;
+    // ArcGIS unreachable — try job data enrichment only
+    const jobEnriched = await enrichSectorsWithJobData(stubSectors);
+    return jobEnriched;
   }
 }
 

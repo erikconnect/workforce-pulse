@@ -1,6 +1,10 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({

@@ -10,7 +10,7 @@ import {
   normalizeUsaJobsRecord,
   deriveInsights,
 } from "@/lib/job-processing";
-import type { RawIndeedRecord } from "@/lib/job-processing";
+import type { RawIndeedRecord, RawLinkedInRecord, RawGlassdoorRecord } from "@/lib/job-processing";
 
 const JOBAPS_RSS_URL =
   process.env.JOBAPS_RSS_URL ?? "https://jobapscloud.com/MGM/rss.asp";
@@ -84,8 +84,9 @@ async function fetchWithTimeout(
 }
 
 /** Fetch and upsert JobAps (City of Montgomery) jobs */
-async function fetchJobAps(): Promise<{ count: number; errors: string[] }> {
+async function fetchJobAps(): Promise<{ count: number; errors: string[]; url: string; source: string }> {
   const errors: string[] = [];
+  console.log(`[JobAps] 🔸 Fetching from: ${JOBAPS_RSS_URL}`);
   try {
     const res = await fetchWithTimeout(JOBAPS_RSS_URL, {
       timeout: API_FETCH_TIMEOUT_MS,
@@ -95,8 +96,10 @@ async function fetchJobAps(): Promise<{ count: number; errors: string[] }> {
       },
     });
     if (!res.ok) {
-      errors.push(`JobAps fetch failed (${res.status})`);
-      return { count: 0, errors };
+      const err = `JobAps fetch failed (${res.status})`;
+      console.error(`[JobAps] ❌ ${err}`);
+      errors.push(err);
+      return { count: 0, errors, url: JOBAPS_RSS_URL, source: "JobAps (City of Montgomery)" };
     }
     const xml = await res.text();
     const itemBlocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) ?? [];
@@ -118,18 +121,23 @@ async function fetchJobAps(): Promise<{ count: number; errors: string[] }> {
       jobStore.upsert(posting);
       count++;
     }
-    return { count, errors };
+    console.log(`[JobAps] ✅ Found ${count} jobs`);
+    return { count, errors, url: JOBAPS_RSS_URL, source: "JobAps (City of Montgomery)" };
   } catch (e) {
-    errors.push(e instanceof Error ? e.message : String(e));
-    return { count: 0, errors };
+    const err = e instanceof Error ? e.message : String(e);
+    console.error(`[JobAps] ❌ Error: ${err}`);
+    errors.push(err);
+    return { count: 0, errors, url: JOBAPS_RSS_URL, source: "JobAps (City of Montgomery)" };
   }
 }
 
 /** Fetch and upsert USAJOBS (Federal) jobs for Montgomery, AL area */
-async function fetchUsaJobs(): Promise<{ count: number; errors: string[] }> {
+async function fetchUsaJobs(): Promise<{ count: number; errors: string[]; url: string; source: string }> {
   const errors: string[] = [];
+  console.log(`[USAJOBS] 🔹 Fetching from: ${USAJOBS_API}`);
   if (!USAJOBS_KEY) {
-    return { count: 0, errors };
+    console.warn(`[USAJOBS] ⚠️ No API key configured`);
+    return { count: 0, errors: ["USAJOBS_API_KEY not configured"], url: USAJOBS_API, source: "USAJOBS API" };
   }
   try {
     const params = new URLSearchParams({
@@ -146,8 +154,10 @@ async function fetchUsaJobs(): Promise<{ count: number; errors: string[] }> {
       },
     });
     if (!res.ok) {
-      errors.push(`USAJOBS fetch failed (${res.status})`);
-      return { count: 0, errors };
+      const err = `USAJOBS fetch failed (${res.status})`;
+      console.error(`[USAJOBS] ❌ ${err}`);
+      errors.push(err);
+      return { count: 0, errors, url: USAJOBS_API, source: "USAJOBS API" };
     }
     const json = await res.json();
     const items =
@@ -158,16 +168,21 @@ async function fetchUsaJobs(): Promise<{ count: number; errors: string[] }> {
       jobStore.upsert(posting);
       count++;
     }
-    return { count, errors };
+    console.log(`[USAJOBS] ✅ Found ${count} jobs`);
+    return { count, errors, url: USAJOBS_API, source: "USAJOBS API (Federal)" };
   } catch (e) {
-    errors.push(e instanceof Error ? e.message : String(e));
-    return { count: 0, errors };
+    const err = e instanceof Error ? e.message : String(e);
+    console.error(`[USAJOBS] ❌ Error: ${err}`);
+    errors.push(err);
+    return { count: 0, errors, url: USAJOBS_API, source: "USAJOBS API (Federal)" };
   }
 }
 
 /** Run Indeed scrape via Scraping Browser (optional, can timeout) */
-async function fetchIndeed(): Promise<{ count: number; errors: string[] }> {
+async function fetchIndeed(): Promise<{ count: number; errors: string[]; url: string; source: string }> {
   const errors: string[] = [];
+  const url = "https://indeed.com (via Bright Data Scraping Browser)";
+  console.log(`[Indeed] 🔸 Scraping from Bright Data Scraping Browser`);
   try {
     const { scrapeIndeedJobs, DEFAULT_SCRAPE_QUERIES } = await import(
       "@/lib/scraper"
@@ -178,15 +193,68 @@ async function fetchIndeed(): Promise<{ count: number; errors: string[] }> {
       const posting = norm(job as unknown as RawIndeedRecord);
       jobStore.upsert(posting);
     }
-    return { count: result.jobs.length, errors };
+    console.log(`[Indeed] ✅ Found ${result.jobs.length} jobs`);
+    return { count: result.jobs.length, errors, url, source: "Indeed (via Bright Data)" };
   } catch (e) {
-    errors.push(e instanceof Error ? e.message : String(e));
-    return { count: 0, errors };
+    const err = e instanceof Error ? e.message : String(e);
+    console.error(`[Indeed] ❌ Error: ${err}`);
+    errors.push(err);
+    return { count: 0, errors, url, source: "Indeed (via Bright Data)" };
+  }
+}
+
+/** Run LinkedIn scrape via Scraping Browser (optional, can timeout) */
+async function fetchLinkedIn(): Promise<{ count: number; errors: string[]; url: string; source: string }> {
+  const errors: string[] = [];
+  const url = "https://linkedin.com (via Bright Data Scraping Browser)";
+  console.log(`[LinkedIn] 🔹 Scraping from Bright Data Scraping Browser`);
+  try {
+    const { scrapeLinkedInJobs, DEFAULT_SCRAPE_QUERIES } = await import(
+      "@/lib/scraper"
+    );
+    const { normalizeLinkedInRecord: norm } = await import("@/lib/job-processing");
+    const result = await scrapeLinkedInJobs(DEFAULT_SCRAPE_QUERIES);
+    for (const job of result.jobs) {
+      const posting = norm(job as unknown as RawLinkedInRecord);
+      jobStore.upsert(posting);
+    }
+    console.log(`[LinkedIn] ✅ Found ${result.jobs.length} jobs`);
+    return { count: result.jobs.length, errors, url, source: "LinkedIn (via Bright Data)" };
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e);
+    console.error(`[LinkedIn] ❌ Error: ${err}`);
+    errors.push(err);
+    return { count: 0, errors, url, source: "LinkedIn (via Bright Data)" };
+  }
+}
+
+/** Run Glassdoor scrape via Scraping Browser (optional, can timeout) */
+async function fetchGlassdoor(): Promise<{ count: number; errors: string[]; url: string; source: string }> {
+  const errors: string[] = [];
+  const url = "https://glassdoor.com (via Bright Data Scraping Browser)";
+  console.log(`[Glassdoor] 🔸 Scraping from Bright Data Scraping Browser`);
+  try {
+    const { scrapeGlassdoorJobs, DEFAULT_SCRAPE_QUERIES } = await import(
+      "@/lib/scraper"
+    );
+    const { normalizeGlassdoorRecord: norm } = await import("@/lib/job-processing");
+    const result = await scrapeGlassdoorJobs(DEFAULT_SCRAPE_QUERIES);
+    for (const job of result.jobs) {
+      const posting = norm(job as unknown as RawGlassdoorRecord);
+      jobStore.upsert(posting);
+    }
+    console.log(`[Glassdoor] ✅ Found ${result.jobs.length} jobs`);
+    return { count: result.jobs.length, errors, url, source: "Glassdoor (via Bright Data)" };
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e);
+    console.error(`[Glassdoor] ❌ Error: ${err}`);
+    errors.push(err);
+    return { count: 0, errors, url, source: "Glassdoor (via Bright Data)" };
   }
 }
 
 export interface AggregateResult {
-  sources: Record<string, { count: number; errors: string[] }>;
+  sources: Record<string, { count: number; errors: string[]; url: string; source: string }>;
   totalNew: number;
   totalStored: number;
   insights: ReturnType<typeof deriveInsights>;
@@ -194,24 +262,32 @@ export interface AggregateResult {
 
 /**
  * Aggregate jobs from all configured sources.
- * Runs JobAps + USAJOBS always; runs Indeed if BRIGHT_DATA_BROWSER_WSS is set.
+ * Runs JobAps + USAJOBS always; runs Indeed/LinkedIn/Glassdoor if BRIGHT_DATA_BROWSER_WSS is set.
  */
 export async function aggregateJobs(options?: {
   includeIndeed?: boolean;
+  includeLinkedIn?: boolean;
+  includeGlassdoor?: boolean;
 }): Promise<AggregateResult> {
-  const includeIndeed =
-    options?.includeIndeed ?? !!process.env.BRIGHT_DATA_BROWSER_WSS;
+  const includeScraping = !!process.env.BRIGHT_DATA_BROWSER_WSS;
+  const includeIndeed = options?.includeIndeed ?? includeScraping;
+  const includeLinkedIn = options?.includeLinkedIn ?? includeScraping;
+  const includeGlassdoor = options?.includeGlassdoor ?? includeScraping;
 
-  const [jobApsResult, usaJobsResult, indeedResult] = await Promise.all([
+  const [jobApsResult, usaJobsResult, indeedResult, linkedInResult, glassdoorResult] = await Promise.all([
     fetchJobAps(),
     fetchUsaJobs(),
-    includeIndeed ? fetchIndeed() : Promise.resolve({ count: 0, errors: [] }),
+    includeIndeed ? fetchIndeed() : Promise.resolve({ count: 0, errors: ["Scraping disabled"], url: "https://indeed.com", source: "Indeed (via Bright Data)" }),
+    includeLinkedIn ? fetchLinkedIn() : Promise.resolve({ count: 0, errors: ["Scraping disabled"], url: "https://linkedin.com", source: "LinkedIn (via Bright Data)" }),
+    includeGlassdoor ? fetchGlassdoor() : Promise.resolve({ count: 0, errors: ["Scraping disabled"], url: "https://glassdoor.com", source: "Glassdoor (via Bright Data)" }),
   ]);
 
   const sources = {
     jobaps: jobApsResult,
     usajobs: usaJobsResult,
     indeed: indeedResult,
+    linkedin: linkedInResult,
+    glassdoor: glassdoorResult,
   };
 
   const allPostings = jobStore.getAll();
@@ -221,7 +297,7 @@ export async function aggregateJobs(options?: {
   return {
     sources,
     totalNew:
-      jobApsResult.count + usaJobsResult.count + indeedResult.count,
+      jobApsResult.count + usaJobsResult.count + indeedResult.count + linkedInResult.count + glassdoorResult.count,
     totalStored: jobStore.count(),
     insights,
   };
