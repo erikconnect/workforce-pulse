@@ -7,24 +7,42 @@ import { fetchWorkforceData } from "@/services/api/workforce-data"
 import { MontgomeryFact } from "@/components/dashboard/montgomery-fact"
 
 const CIRCLE_METRICS = [
-  { key: "911", label: "Calls", labelFull: "911 Calls", valueKey: "arcgis911CallCount" as const, stroke: "#fca5a5", dashOffset: 60, glowClass: "hero-ring-glow-red" },
-  { key: "permits", label: "Permits", labelFull: "Permits", valueKey: "arcgisPermitCount" as const, stroke: "#fcd34d", dashOffset: 180, glowClass: "hero-ring-glow-amber" },
-  { key: "jobs", label: "Jobs", labelFull: "Open Jobs", valueKey: "cityJobsTotal" as const, stroke: "#86efac", dashOffset: 30, glowClass: "hero-ring-glow-green" },
+  { key: "911", label: "Calls", labelFull: "911 Calls", valueKey: "arcgis911CallCount" as const, stroke: "#fca5a5", maxValue: 5000, glowClass: "hero-ring-glow-red" },
+  { key: "permits", label: "Permits", labelFull: "Permits", valueKey: "arcgisPermitCount" as const, stroke: "#fcd34d", maxValue: 200, glowClass: "hero-ring-glow-amber" },
+  { key: "jobs", label: "Jobs", labelFull: "Open Jobs", valueKey: "cityJobsTotal" as const, stroke: "#86efac", maxValue: 5000, glowClass: "hero-ring-glow-green" },
 ]
 
 const CIRCUMFERENCE = 251.2
 
 export function CityProfile() {
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["workforceData"],
     queryFn: fetchWorkforceData,
     staleTime: 3600_000,
   })
 
-  const metrics = CIRCLE_METRICS.map((m) => ({
-    ...m,
-    value: m.valueKey === "arcgis911CallCount" ? (data?.arcgis911CallCount ?? 911) : m.valueKey === "arcgisPermitCount" ? (data?.arcgisPermitCount ?? 25) : (data?.cityJobsTotal ?? 3230),
-  }))
+  const metrics = CIRCLE_METRICS.map((m) => {
+    const value = data?.[m.valueKey] ?? 0
+    // Calculate dynamic dashOffset based on actual value
+    // Formula: offset = circumference - (value / maxValue) * circumference
+    const percentage = Math.min(value / m.maxValue, 1) // Cap at 100%
+    const dashOffset = CIRCUMFERENCE - (percentage * CIRCUMFERENCE * 0.75) // 0.75 for 3/4 circle
+    
+    return {
+      ...m,
+      value,
+      dashOffset,
+    }
+  })
+
+  // Log data for debugging
+  if (!isLoading && data) {
+    console.log('[CityProfile] Workforce data loaded:', {
+      cityJobsTotal: data.cityJobsTotal,
+      arcgis911CallCount: data.arcgis911CallCount,
+      arcgisPermitCount: data.arcgisPermitCount,
+    })
+  }
 
   return (
     <div className="glass-card-strong overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 shadow-lg">
@@ -54,7 +72,7 @@ export function CityProfile() {
           </div>
           <div className="flex gap-8">
             {metrics.map((m) => {
-              const val = typeof m.value === "number" ? m.value.toLocaleString("en-US") : String(m.value)
+              const val = isLoading ? "--" : (typeof m.value === "number" ? m.value.toLocaleString("en-US") : String(m.value))
               return (
                 <div key={m.key} className="flex flex-col items-center">
                   <div className={`relative w-24 h-24 mb-2 ${m.glowClass}`}>
@@ -74,7 +92,7 @@ export function CityProfile() {
                         r="40"
                         stroke={m.stroke}
                         strokeDasharray={CIRCUMFERENCE}
-                        strokeDashoffset={m.dashOffset}
+                        strokeDashoffset={isLoading ? CIRCUMFERENCE : m.dashOffset}
                         strokeLinecap="round"
                         strokeWidth="8"
                         className={m.glowClass}
