@@ -1,7 +1,7 @@
 # Workforce Pulse — API Reference
 
 > **Status:** Draft (hackathon build, March 2026)
-> **Last updated:** 2026-03-07
+> **Last updated:** 2026-03-08
 > **Base URL (local):** `http://localhost:3000`
 > **Base URL (production):** `https://workforce-pulse.vercel.app`
 
@@ -9,28 +9,31 @@ All responses are JSON unless noted. Server-side API keys are never exposed to t
 
 ---
 
-## ⚠️ Architecture Note — Two API Layers
+## Architecture Overview
 
-The project currently has **two separate backend layers** that the team needs to be aware of:
+The project has two layers working together:
 
-| Layer | Location | Framework | Used by |
+| Layer | Location | Framework | Role |
 |---|---|---|---|
-| **Frontend API routes** | `src/app/api/` | Next.js App Router | Erik's frontend (this document) |
-| **Standalone backend** | `backend/` | Node.js (separate server) | Muktar / Ernest |
+| **Frontend + API routes** | `src/app/api/` | Next.js App Router | UI, public endpoints, AI routes |
+| **Backend server** | `backend/` | Node.js + MongoDB | Data ingestion, job storage, aggregation |
 
-The endpoints in this document describe the **Next.js API routes** consumed by the frontend. If the `backend/` server exposes its own routes on a different port or base URL, those should be documented separately in `backend/README.md`. The two layers need to agree on a shared **job object shape** — see the `JobPosting` type in `src/data/mock-jobs.ts` as the reference contract.
+The Next.js frontend consumes its own `/api/*` routes. The `backend/` Node.js server handles data ingestion from JobAps, USAJOBS, and Bright Data, storing results in MongoDB. The frontend API routes read from MongoDB (via the backend) or fall back to `src/data/mock-*.ts` fixtures during development.
+
+The shared data contract between layers is the `JobPosting` type defined in `src/data/mock-jobs.ts`. Both layers must produce and consume this shape.
+
+> **Backend integration status (as of 2026-03-08):** MongoDB connection is actively being integrated. If the backend is unavailable, all endpoints fall back to mock data automatically.
 
 ---
 
 ## Authentication & Keys
 
-The following environment variables must be set in `.env.local` before the API routes will work:
-
 | Variable | Required | Used by |
 |---|---|---|
 | `USAJOBS_API_KEY` | Yes (for USAJOBS) | `/api/jobs/aggregate` |
 | `USAJOBS_USER_AGENT` | Yes (for USAJOBS, use your email) | `/api/jobs/aggregate` |
-| `GEMINI_API_KEY` | Yes (for AI feature) | `/api/ai/chat`, `/api/ai/learning-path` |
+| `GEMINI_API_KEY` | Yes (for AI features) | `/api/ai/chat`, `/api/ai/learning-path` |
+| `MONGODB_URI` | Yes (for backend) | `backend/` Node.js server |
 | `BRIGHT_DATA_BROWSER_WSS` | Optional | `/api/jobs/scrape` |
 | `BRIGHT_DATA_API_KEY` | Optional | `/api/crawl/*` |
 | `JOBAPS_RSS_URL` | Optional (has default) | `/api/jobs/aggregate` |
@@ -38,18 +41,21 @@ The following environment variables must be set in `.env.local` before the API r
 
 ---
 
-## Job Aggregation
+## Public Endpoints (no login required)
 
-### `GET /api/jobs/aggregate`
+### `GET /api/jobs/public`
 
-Fetches and merges job listings from all configured sources (JobAps RSS, USAJOBS, and optionally Indeed via Bright Data). Results are cached and refreshed **daily at midnight UTC**. Also triggered by Vercel Cron.
+Returns a list of job postings accessible without authentication. Intended for the public-facing job board — visible to any Montgomery resident without signing in. Supports keyword search and basic filtering.
 
 **Query Parameters**
 
 | Param | Type | Default | Description |
 |---|---|---|---|
+| `q` | string | — | Keyword search (title, org, skills) |
 | `sector` | string | all | Filter by sector slug, e.g. `public-safety` |
-| `refresh` | boolean | false | Force a fresh fetch, bypassing cache |
+| `source` | string | all | Filter by source: `jobaps`, `usajobs`, `indeed` |
+| `limit` | number | 20 | Max results to return |
+| `offset` | number | 0 | Pagination offset |
 
 **Response `200 OK`**
 
@@ -71,8 +77,43 @@ Fetches and merges job listings from all configured sources (JobAps RSS, USAJOBS
   ],
   "meta": {
     "total": 142,
-    "lastRefreshed": "2026-03-07T00:00:00Z",
+    "query": "firefighter",
     "sources": ["jobaps", "usajobs"]
+  }
+}
+```
+
+> **Note:** This endpoint returns a safe subset of job data — no internal analytics, Impact Scores, or mission data. Those remain behind authentication.
+
+---
+
+## Authenticated Endpoints (login required)
+
+All endpoints below require a valid session. Unauthenticated requests return `401`.
+
+---
+
+### `GET /api/jobs/aggregate`
+
+Fetches and merges job listings from all configured sources. Results refreshed **daily at midnight UTC** via Vercel Cron. Returns full job objects including `critical` flag and sector metadata.
+
+**Query Parameters**
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `sector` | string | all | Filter by sector slug |
+| `refresh` | boolean | false | Force a fresh fetch, bypassing cache |
+
+**Response `200 OK`** — same job shape as `/api/jobs/public` plus:
+
+```json
+{
+  "jobs": [ /* full JobPosting shape */ ],
+  "meta": {
+    "total": 142,
+    "lastRefreshed": "2026-03-08T00:00:00Z",
+    "sources": ["jobaps", "usajobs"],
+    "backendConnected": true
   }
 }
 ```
@@ -81,16 +122,15 @@ Fetches and merges job listings from all configured sources (JobAps RSS, USAJOBS
 
 | Status | Meaning |
 |---|---|
-| `500` | One or more sources failed; partial results may be returned |
-| `503` | All sources unavailable |
-
-> **Frontend tip:** Safe to call on page load — returns cached data instantly unless `refresh=true`. Falls back to `src/data/mock-jobs.ts` if all sources fail.
+| `401` | Not authenticated |
+| `500` | One or more sources failed; partial results returned |
+| `503` | All sources unavailable — falls back to mock data |
 
 ---
 
 ### `POST /api/jobs/scrape`
 
-Triggers a live Indeed scrape via Bright Data Scraping Browser. Requires `BRIGHT_DATA_BROWSER_WSS`. If the Bright Data account is suspended, returns `503` — handle gracefully and fall back to JobAps + USAJOBS.
+Triggers a live Indeed scrape via Bright Data Scraping Browser. Returns `503` if account is suspended — fall back gracefully to JobAps + USAJOBS.
 
 **Request Body**
 
@@ -110,13 +150,6 @@ Triggers a live Indeed scrape via Bright Data Scraping Browser. Requires `BRIGHT
   "jobs": [ /* same shape as aggregate response */ ]
 }
 ```
-
-**Error Responses**
-
-| Status | Meaning |
-|---|---|
-| `400` | Missing required body fields |
-| `503` | `BRIGHT_DATA_BROWSER_WSS` not configured or account suspended |
 
 ---
 
@@ -145,11 +178,7 @@ Initiates a Bright Data dataset crawl for LinkedIn or Glassdoor enrichment.
 }
 ```
 
----
-
 ### `GET /api/crawl/status/:snapshotId`
-
-Polls the status of a triggered crawl. Crawls typically take several minutes.
 
 **Response `200 OK`**
 
@@ -157,7 +186,7 @@ Polls the status of a triggered crawl. Crawls typically take several minutes.
 {
   "snapshotId": "snap_abc123",
   "status": "pending | ready | failed",
-  "resultUrl": "https://... (present when status=ready)"
+  "resultUrl": "https://..."
 }
 ```
 
@@ -167,14 +196,14 @@ Polls the status of a triggered crawl. Crawls typically take several minutes.
 
 ### `GET /api/trends`
 
-Returns computed hiring trend signals — fastest-rising skills, sector demand changes, and critical role pressure indicators. Falls back to `src/data/mock-pulse.ts` if the analytics layer is not yet built.
+Returns hiring trend signals — rising skills, sector pressure, critical roles. Falls back to `src/data/mock-pulse.ts` if analytics layer not yet built.
 
 **Query Parameters**
 
 | Param | Type | Default | Description |
 |---|---|---|---|
-| `sector` | string | all | Sector slug to scope results |
-| `window` | string | `30d` | Time window: `7d`, `30d`, `90d` |
+| `sector` | string | all | Sector slug |
+| `window` | string | `30d` | `7d`, `30d`, `90d` |
 
 **Response `200 OK`**
 
@@ -198,7 +227,7 @@ Returns computed hiring trend signals — fastest-rising skills, sector demand c
 
 ### `POST /api/ai/chat`
 
-Conversational endpoint powered by **Gemini API**. Accepts a chat history and returns the assistant's next response, grounded in current job data.
+Conversational endpoint powered by **Gemini API**, grounded in current Montgomery job data.
 
 **Request Body**
 
@@ -207,9 +236,7 @@ Conversational endpoint powered by **Gemini API**. Accepts a chat history and re
   "messages": [
     { "role": "user", "content": "What skills do I need to become a firefighter in Montgomery?" }
   ],
-  "context": {
-    "sector": "public-safety"
-  }
+  "context": { "sector": "public-safety" }
 }
 ```
 
@@ -217,23 +244,14 @@ Conversational endpoint powered by **Gemini API**. Accepts a chat history and re
 
 ```json
 {
-  "reply": "To qualify for a Firefighter I role in Montgomery, the most in-demand skills right now are...",
-  "suggestedJobs": [ /* optional, same shape as job object */ ]
+  "reply": "To qualify for a Firefighter I role in Montgomery...",
+  "suggestedJobs": [ /* optional */ ]
 }
 ```
 
-**Error Responses**
-
-| Status | Meaning |
-|---|---|
-| `400` | Empty or malformed messages array |
-| `503` | `GEMINI_API_KEY` not configured |
-
----
-
 ### `POST /api/ai/learning-path`
 
-Generates a personalised career milestone roadmap for a given target role. Powered by Gemini API. Corresponds to the AI Learning Path screen in the product.
+Generates a personalised career roadmap for a given target role.
 
 **Request Body**
 
@@ -252,31 +270,29 @@ Generates a personalised career milestone roadmap for a given target role. Power
   "estimatedMonths": 4.5,
   "progressPct": 35,
   "milestones": [
-    { "step": 1, "label": "Current Skills",     "status": "verified"     },
-    { "step": 2, "label": "Skill Gap Analysis",  "status": "in-progress"  },
-    { "step": 3, "label": "AI Specialization",   "status": "recommended"  },
-    { "step": 4, "label": "Target Role Reached", "status": "goal"         }
+    { "step": 1, "label": "Current Skills",     "status": "verified"    },
+    { "step": 2, "label": "Skill Gap Analysis",  "status": "in-progress" },
+    { "step": 3, "label": "AI Specialization",   "status": "recommended" },
+    { "step": 4, "label": "Target Role Reached", "status": "goal"        }
   ],
   "topRecommendations": [
-    {
-      "title": "Advanced SQL for Data Analytics",
-      "provider": "Coursera",
-      "durationHours": 12,
-      "free": true
-    }
+    { "title": "Advanced SQL for Data Analytics", "provider": "Coursera", "durationHours": 12, "free": true }
   ]
 }
 ```
+
+**Error Responses (both AI endpoints)**
+
+| Status | Meaning |
+|---|---|
+| `400` | Empty or malformed messages array |
+| `503` | `GEMINI_API_KEY` not configured |
 
 ---
 
 ## Missions & Playbooks
 
 ### `GET /api/missions`
-
-Returns active workforce missions with checklist items and completion status.
-
-**Response `200 OK`**
 
 ```json
 {
@@ -297,43 +313,22 @@ Returns active workforce missions with checklist items and completion status.
 
 ### `POST /api/missions/:id/complete-step`
 
-Marks a mission task as complete and updates the progress value.
-
-**Request Body**
-
 ```json
 { "taskId": "t2" }
 ```
 
----
-
 ### `GET /api/playbooks`
-
-Returns shareable action plans.
-
-**Response `200 OK`**
 
 ```json
 {
   "playbooks": [
-    {
-      "id": "pb_001",
-      "title": "Public Safety Hiring Sprint",
-      "likes": 4,
-      "saved": true,
-      "steps": ["string"]
-    }
+    { "id": "pb_001", "title": "Public Safety Hiring Sprint", "likes": 4, "saved": true, "steps": ["string"] }
   ]
 }
 ```
 
-### `POST /api/playbooks`
-
-Creates a new playbook. Body should include `title`, `sector`, `insights[]`, and `actions[]`.
-
-### `POST /api/playbooks/:id/react`
-
-Adds a reaction (like / save) to a playbook.
+### `POST /api/playbooks` — create a new playbook (title, sector, insights[], actions[])
+### `POST /api/playbooks/:id/react` — add like or save reaction
 
 ---
 
@@ -341,27 +336,23 @@ Adds a reaction (like / save) to a playbook.
 
 ### `GET /api/cron/refresh-jobs`
 
-Called automatically by Vercel Cron **once daily at midnight UTC**. Triggers a full job aggregation cycle. Protected — only callable from the Vercel environment (verified via `CRON_SECRET` header).
+Called by Vercel Cron **once daily at midnight UTC**. Protected via `CRON_SECRET` header.
 
 ---
 
-## Mock Data (Development)
-
-When no live data sources are configured, the frontend falls back to static fixtures in `src/data/`:
+## Mock Data Fallback (Development)
 
 | File | Powers |
 |---|---|
 | `src/data/mock-jobs.ts` | All job listing endpoints |
-| `src/data/mock-pulse.ts` | Trends, sectors, missions, playbooks, daily pulse tile |
-
-Both files export typed TypeScript objects matching the shapes above. Use these to build and test UI components before the backend is connected.
+| `src/data/mock-pulse.ts` | Trends, sectors, missions, playbooks, daily pulse |
 
 ---
 
-## Notes for Frontend Integration
+## Integration Notes
 
-- Job objects share a consistent shape across all endpoints — see `JobPosting` in `src/data/mock-jobs.ts`.
-- The `/api/jobs/aggregate` endpoint is safe to call on page load; returns cached data instantly unless `refresh=true`.
-- Bright Data endpoints return `503` if the account is suspended — fall back to mock data gracefully.
-- All AI endpoints require `GEMINI_API_KEY` in `.env.local`. Get a free key at [Google AI Studio](https://aistudio.google.com).
-- Never call server-side `/api/*` routes directly from client components unless the route is explicitly public.
+- Public job board (`/api/jobs/public`) requires no auth — safe to call from any page including the landing page.
+- All analytics, missions, and playbooks endpoints require authentication.
+- MongoDB URI must be set in both `.env.local` (frontend) and `backend/.env` (Node.js server).
+- All AI endpoints require `GEMINI_API_KEY`. Free key at [Google AI Studio](https://aistudio.google.com).
+- Bright Data returns `503` if account is suspended — always fall back to JobAps + USAJOBS gracefully.
