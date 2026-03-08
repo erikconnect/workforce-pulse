@@ -103,7 +103,7 @@ async function fetchJobAps(): Promise<{ count: number; errors: string[]; url: st
     }
     const xml = await res.text();
     const itemBlocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) ?? [];
-    let count = 0;
+    const postings = [];
     for (const block of itemBlocks) {
       const title = extractTag(block, "title");
       if (!title || title.toLowerCase().includes("application on-file"))
@@ -118,11 +118,11 @@ async function fetchJobAps(): Promise<{ count: number; errors: string[]; url: st
         jobType: extractTag(block, "jobType"),
         sectorId: classifyDept(department),
       });
-      jobStore.upsert(posting);
-      count++;
+      postings.push(posting);
     }
-    console.log(`[JobAps] ✅ Found ${count} jobs`);
-    return { count, errors, url: JOBAPS_RSS_URL, source: "JobAps (City of Montgomery)" };
+    await jobStore.bulkUpsert(postings);
+    console.log(`[JobAps] ✅ Found ${postings.length} jobs`);
+    return { count: postings.length, errors, url: JOBAPS_RSS_URL, source: "JobAps (City of Montgomery)" };
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
     console.error(`[JobAps] ❌ Error: ${err}`);
@@ -162,14 +162,10 @@ async function fetchUsaJobs(): Promise<{ count: number; errors: string[]; url: s
     const json = await res.json();
     const items =
       json?.SearchResult?.SearchResultItems ?? json?.SearchResultItems ?? [];
-    let count = 0;
-    for (const item of items) {
-      const posting = normalizeUsaJobsRecord(item);
-      jobStore.upsert(posting);
-      count++;
-    }
-    console.log(`[USAJOBS] ✅ Found ${count} jobs`);
-    return { count, errors, url: USAJOBS_API, source: "USAJOBS API (Federal)" };
+    const postings = items.map((item: any) => normalizeUsaJobsRecord(item));
+    await jobStore.bulkUpsert(postings);
+    console.log(`[USAJOBS] ✅ Found ${postings.length} jobs`);
+    return { count: postings.length, errors, url: USAJOBS_API, source: "USAJOBS API (Federal)" };
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
     console.error(`[USAJOBS] ❌ Error: ${err}`);
@@ -189,10 +185,8 @@ async function fetchIndeed(): Promise<{ count: number; errors: string[]; url: st
     );
     const { normalizeIndeedRecord: norm } = await import("@/lib/job-processing");
     const result = await scrapeIndeedJobs(DEFAULT_SCRAPE_QUERIES);
-    for (const job of result.jobs) {
-      const posting = norm(job as unknown as RawIndeedRecord);
-      jobStore.upsert(posting);
-    }
+    const postings = result.jobs.map(job => norm(job as unknown as RawIndeedRecord));
+    await jobStore.bulkUpsert(postings);
     console.log(`[Indeed] ✅ Found ${result.jobs.length} jobs`);
     return { count: result.jobs.length, errors, url, source: "Indeed (via Bright Data)" };
   } catch (e) {
@@ -214,10 +208,8 @@ async function fetchLinkedIn(): Promise<{ count: number; errors: string[]; url: 
     );
     const { normalizeLinkedInRecord: norm } = await import("@/lib/job-processing");
     const result = await scrapeLinkedInJobs(DEFAULT_SCRAPE_QUERIES);
-    for (const job of result.jobs) {
-      const posting = norm(job as unknown as RawLinkedInRecord);
-      jobStore.upsert(posting);
-    }
+    const postings = result.jobs.map(job => norm(job as unknown as RawLinkedInRecord));
+    await jobStore.bulkUpsert(postings);
     console.log(`[LinkedIn] ✅ Found ${result.jobs.length} jobs`);
     return { count: result.jobs.length, errors, url, source: "LinkedIn (via Bright Data)" };
   } catch (e) {
@@ -239,10 +231,8 @@ async function fetchGlassdoor(): Promise<{ count: number; errors: string[]; url:
     );
     const { normalizeGlassdoorRecord: norm } = await import("@/lib/job-processing");
     const result = await scrapeGlassdoorJobs(DEFAULT_SCRAPE_QUERIES);
-    for (const job of result.jobs) {
-      const posting = norm(job as unknown as RawGlassdoorRecord);
-      jobStore.upsert(posting);
-    }
+    const postings = result.jobs.map(job => norm(job as unknown as RawGlassdoorRecord));
+    await jobStore.bulkUpsert(postings);
     console.log(`[Glassdoor] ✅ Found ${result.jobs.length} jobs`);
     return { count: result.jobs.length, errors, url, source: "Glassdoor (via Bright Data)" };
   } catch (e) {
@@ -290,7 +280,7 @@ export async function aggregateJobs(options?: {
     glassdoor: glassdoorResult,
   };
 
-  const allPostings = jobStore.getAll();
+  const allPostings = await jobStore.getAll();
   const insights = deriveInsights(allPostings);
   jobStore.setInsights(insights);
 
@@ -298,7 +288,7 @@ export async function aggregateJobs(options?: {
     sources,
     totalNew:
       jobApsResult.count + usaJobsResult.count + indeedResult.count + linkedInResult.count + glassdoorResult.count,
-    totalStored: jobStore.count(),
+    totalStored: await jobStore.count(),
     insights,
   };
 }

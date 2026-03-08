@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getMissions,
+  getMissionMemberProfile,
   getMissionById,
   createMission,
   updateMissionStep,
@@ -11,6 +12,7 @@ import {
 const router = express.Router();
 
 router.get('/', getMissions);
+router.get('/profile', getMissionMemberProfile);
 router.get('/:id', getMissionById);
 router.post('/', createMission);
 router.patch('/:id', updateMission);

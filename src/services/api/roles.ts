@@ -1,47 +1,54 @@
 import type { Role } from "../types";
-import { stubRoles } from "../stubs/roles.stub";
 
-const USE_STUBS = process.env.NEXT_PUBLIC_USE_STUBS === "true";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-const ARCGIS_STATIONS_URL = process.env.NEXT_PUBLIC_ARCGIS_STATIONS_URL ?? "";
+type ApiEnvelope<T> = { success?: boolean; data?: T };
 
-export async function fetchRoles(): Promise<Role[]> {
-  if (USE_STUBS) return stubRoles;
+type JobInsights = {
+  topRoles?: Array<{ title: string; count: number; sectorId: string | null }>;
+};
 
-  if (API) {
-    const res = await fetch(`${API}/roles`);
-    if (!res.ok) throw new Error("Failed to fetch roles");
-    return res.json();
-  }
-
-  // Augment public safety roles with real station counts from ArcGIS
-  try {
-    if (!ARCGIS_STATIONS_URL) return stubRoles;
-    const res = await fetch(
-      `${ARCGIS_STATIONS_URL}/0/query?where=1%3D1&outFields=*&resultRecordCount=100&f=json`,
-      { next: { revalidate: 3600 } }
-    );
-    if (!res.ok) throw new Error("Stations API error");
-    const json = await res.json();
-    const stationCount: number = json.features?.length ?? 0;
-
-    if (stationCount === 0) return stubRoles;
-
-    return stubRoles.map((role) => {
-      if (role.sectorId === "public-safety") {
-        return { ...role, openCount: Math.max(role.openCount, Math.round(stationCount * 0.3)) };
-      }
-      return role;
-    });
-  } catch {
-    return stubRoles;
+function assertApiConfigured() {
+  if (!API) {
+    throw new Error("NEXT_PUBLIC_API_URL not configured");
   }
 }
 
+function inferUrgency(openCount: number): "critical" | "watch" | "stable" {
+  if (openCount >= 20) return "critical";
+  if (openCount >= 8) return "watch";
+  return "stable";
+}
+
+function mapTopRoles(topRoles: Array<{ title: string; count: number; sectorId: string | null }>): Role[] {
+  return topRoles
+    .filter((role) => Boolean(role.sectorId))
+    .map((role, index) => ({
+      id: `${role.sectorId}-role-${index + 1}`,
+      title: role.title,
+      sectorId: role.sectorId as string,
+      openCount: role.count,
+      urgency: inferUrgency(role.count),
+      requiredSkills: [],
+      avgTimeToFill: 30,
+    }));
+}
+
+export async function fetchRoles(): Promise<Role[]> {
+  assertApiConfigured();
+
+  const res = await fetch(`${API}/jobs/insights`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Failed to fetch roles from job insights: ${res.status}`);
+
+  const payload = (await res.json()) as ApiEnvelope<JobInsights> | JobInsights;
+  const insights = "data" in (payload as ApiEnvelope<JobInsights>)
+    ? (payload as ApiEnvelope<JobInsights>).data
+    : (payload as JobInsights);
+
+  return mapTopRoles(insights?.topRoles ?? []);
+}
+
 export async function fetchRolesBySector(sectorId: string): Promise<Role[]> {
-  if (USE_STUBS) return stubRoles.filter((r) => r.sectorId === sectorId);
-  const res = await fetch(`${API}/roles?sectorId=${sectorId}`);
-  if (!res.ok) throw new Error(`Failed to fetch roles for sector ${sectorId}`);
-  return res.json();
+  const roles = await fetchRoles();
+  return roles.filter((role) => role.sectorId === sectorId);
 }

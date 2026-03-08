@@ -78,7 +78,7 @@ export default function SectorsPage() {
   const { totalJobs } = useTotalJobs()
   
   const recordSectorCompare = useMutation({
-    mutationFn: (sectorId: string) => Promise.resolve(recordSectorAction(sectorId, "compare")),
+    mutationFn: (sectorId: string) => recordSectorAction(sectorId, "compare"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["missionMemberProfile"] })
     },

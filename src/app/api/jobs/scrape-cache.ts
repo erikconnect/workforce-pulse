@@ -35,7 +35,7 @@ export async function shouldTriggerScrape(): Promise<boolean> {
   const isCacheExpired = timeSinceLastScrape > CACHE_DURATION_MS;
   const minIntervalPassed = timeSinceLastScrape > MIN_SCRAPE_INTERVAL_MS;
 
-  return (isCacheExpired || jobStore.count() === 0) && minIntervalPassed;
+  return (isCacheExpired || (await jobStore.count()) === 0) && minIntervalPassed;
 }
 
 /**

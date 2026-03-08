@@ -66,7 +66,7 @@ export const getJobInsights = async (req, res, next) => {
     const sectorBreakdown = await JobPosting.aggregate([
       { $match: { sectorId: { $ne: null } } },
       { $group: { _id: '$sectorId', count: { $sum: 1 } } },
-      { $project: { sectorId: '$_id', count: 1, percentChange: 0, _id: 0 } },
+      { $project: { sectorId: '$_id', count: 1, percentChange: { $literal: 0 }, _id: 0 } },
     ]);
 
     // Critical roles count (public-safety sector)

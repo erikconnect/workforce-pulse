@@ -13,9 +13,9 @@ import { CityProfile } from "@/components/dashboard/city-profile"
 import { CityScore } from "@/components/dashboard/city-score"
 import { DashboardMiniMap } from "@/components/dashboard/dashboard-mini-map"
 import { LiveScrapeCompact } from "@/components/dashboard/live-scrape"
-import { JobDataStatus } from "@/components/dashboard/job-data-status"
 import { DashboardSignalCard } from "@/components/dashboard/signal-card"
 import { JobInsightsCards } from "@/components/dashboard/job-insights-cards"
+import { MontgomeryCityBadge } from "@/components/branding/montgomery-city-badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { computeCompositeScore } from "@/lib/workforce-health"
@@ -413,10 +413,16 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div className="space-y-4 opacity-0 animate-fade-in-up" style={{ animationFillMode: "forwards" }}>
-        <div className="mb-6">
-          <h1 className="font-display text-4xl font-medium tracking-tight text-foreground" suppressHydrationWarning>
-            {greeting}, {userName}
-          </h1>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display text-4xl font-medium tracking-tight text-foreground" suppressHydrationWarning>
+              {greeting}, {userName}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Workforce conditions anchored to Montgomery&apos;s local operating context.
+            </p>
+          </div>
+          <MontgomeryCityBadge size="md" tone="muted" className="hidden shrink-0 opacity-90 md:inline-flex" />
         </div>
         <CityProfile />
       </div>
@@ -629,7 +635,7 @@ function AdminDashboard() {
                       className={cn(
                         "h-10 w-5 rounded-full transition-all",
                         filled
-                          ? "bg-primary/75 shadow-[0_6px_14px_rgba(209,154,71,0.24)]"
+                          ? "bg-primary/75 shadow-[0_6px_14px_rgba(0,93,122,0.24)]"
                           : "bg-black/5 shadow-inner dark:bg-black/40",
                         isToday && !filled && "border border-dashed border-primary/45 bg-transparent",
                       )}
@@ -677,7 +683,6 @@ function AdminDashboard() {
 
         <div className="order-1 lg:order-2 lg:min-h-[404px] min-w-0 space-y-4">
           <QuickActions />
-          <JobDataStatus />
         </div>
       </div>
     </div>

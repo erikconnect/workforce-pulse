@@ -72,7 +72,7 @@ export const createPlaybook = async (req, res, next) => {
 export const toggleLike = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
+    const userId = req.body?.userId || 'local-user';
 
     const playbook = await Playbook.findOne({ id });
 
@@ -111,7 +111,7 @@ export const toggleLike = async (req, res, next) => {
 export const toggleSave = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body;
+    const userId = req.body?.userId || 'local-user';
 
     const playbook = await Playbook.findOne({ id });
 

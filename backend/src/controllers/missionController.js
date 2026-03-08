@@ -1,4 +1,5 @@
 import Mission from '../models/Mission.js';
+import { buildMissionMemberProfile } from '../utils/communityProfile.js';
 
 // Get all missions
 export const getMissions = async (req, res, next) => {
@@ -14,6 +15,20 @@ export const getMissions = async (req, res, next) => {
     res.json({
       success: true,
       data: missions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get mission member profile summary
+export const getMissionMemberProfile = async (req, res, next) => {
+  try {
+    const profile = await buildMissionMemberProfile('local-user');
+
+    res.json({
+      success: true,
+      data: profile,
     });
   } catch (error) {
     next(error);

@@ -34,6 +34,11 @@ const config: Config = {
   			"fade-in-up": "fade-in-up 0.5s ease-out forwards",
   		},
   		colors: {
+			montgomery: {
+				civic: "#005d7a",
+				deep: "#002e3d",
+				signal: "#00598e",
+			},
   			"text-dark": "#2c2c2c",
   			"text-light": "#f5f5f5",
   			"text-mutedDark": "#6b6b6b",

@@ -7,13 +7,15 @@
   .glass-page-bg {
     background:
       radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 28%),
-      radial-gradient(circle at top right, rgba(214, 190, 150, 0.35), transparent 24%),
-      linear-gradient(135deg, #f3eee7 0%, #e5ddd2 48%, #d9d0c3 100%);
+      radial-gradient(circle at top right, rgba(0, 93, 122, 0.16), transparent 24%),
+      radial-gradient(circle at 18% 78%, rgba(209, 154, 71, 0.18), transparent 26%),
+      linear-gradient(135deg, #f3eee7 0%, #e5ddd2 44%, #d7e0e3 100%);
   }
   .dark .glass-page-bg {
     background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.08), transparent 24%),
-      linear-gradient(135deg, #3a3632 0%, #1e1c19 100%);
+      radial-gradient(circle at top left, rgba(0, 89, 142, 0.16), transparent 24%),
+      radial-gradient(circle at 78% 82%, rgba(209, 154, 71, 0.12), transparent 26%),
+      linear-gradient(135deg, #1f2122 0%, #10202a 56%, #0a141a 100%);
   }
   .dashboard-shell {
     background: rgba(255, 255, 255, 0.28);
@@ -93,10 +95,10 @@
     background: linear-gradient(135deg, hsl(36 60% 55% / 0.15) 0%, hsl(36 60% 55% / 0.04) 100%);
   }
   .tile-accent {
-    background: linear-gradient(135deg, hsl(205 100% 29% / 0.06) 0%, hsl(205 100% 29% / 0.01) 100%);
+    background: linear-gradient(135deg, hsl(var(--montgomery-civic) / 0.08) 0%, hsl(var(--montgomery-signal) / 0.02) 100%);
   }
   .dark .tile-accent {
-    background: linear-gradient(135deg, hsl(205 80% 50% / 0.15) 0%, hsl(205 80% 50% / 0.04) 100%);
+    background: linear-gradient(135deg, hsl(var(--montgomery-signal) / 0.18) 0%, hsl(var(--montgomery-deep) / 0.08) 100%);
   }
   .animate-stagger-1 { animation-delay: 0.05s; }
   .animate-stagger-2 { animation-delay: 0.1s; }
@@ -181,8 +183,8 @@
   .montgomery-hero-lights {
     background:
       radial-gradient(circle at 18% 20%, rgba(255, 255, 255, 0.16), transparent 24%),
-      radial-gradient(circle at 54% 16%, rgba(255, 255, 255, 0.1), transparent 18%),
-      radial-gradient(circle at 80% 22%, rgba(255, 255, 255, 0.12), transparent 20%);
+      radial-gradient(circle at 54% 16%, rgba(209, 154, 71, 0.14), transparent 18%),
+      radial-gradient(circle at 80% 22%, rgba(0, 89, 142, 0.16), transparent 20%);
   }
 
   .montgomery-hero-skyline {
@@ -196,7 +198,7 @@
 
   .montgomery-hero-vignette {
     background:
-      linear-gradient(90deg, rgba(49, 42, 36, 0.18) 0%, rgba(49, 42, 36, 0) 38%, rgba(49, 42, 36, 0.34) 100%),
+      linear-gradient(90deg, rgba(49, 42, 36, 0.14) 0%, rgba(0, 46, 61, 0.02) 38%, rgba(0, 46, 61, 0.26) 100%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.16) 100%);
   }
   .montgomery-hero-photo {
@@ -273,6 +275,11 @@
 
   .dashboard-scroll-area {
     scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
+  }
+
+  .dashboard-scroll-area [id] {
+    scroll-margin-top: 5.5rem;
   }
   /* Scrollbar styling for elements with overflow */
   [class*="overflow-y-auto"]::-webkit-scrollbar,
@@ -382,6 +389,9 @@
 
 @layer base {
   :root {
+    --montgomery-civic: 194 100% 24%;  /* #005d7a */
+    --montgomery-deep: 195 100% 12%;   /* #002e3d */
+    --montgomery-signal: 202 100% 28%; /* #00598e */
     --background: 40 22% 94%;           /* #efeae2 Montgomery light */
     --foreground: 0 0% 17%;             /* #2c2c2c text-dark */
     --card: 0 0% 100%;
@@ -390,25 +400,25 @@
     --popover-foreground: 0 0% 17%;
     --primary: 35 60% 55%;              /* #D19A47 Montgomery gold */
     --primary-foreground: 30 12% 14%;
-    --secondary: 36 44% 50%;            /* gold */
+    --secondary: var(--montgomery-deep);
     --secondary-foreground: 0 0% 98%;
     --muted: 40 15% 90%;               /* subtle beige */
     --muted-foreground: 0 0% 42%;      /* #6b6b6b text-mutedDark */
-    --accent: 35 60% 55%;
-    --accent-foreground: 30 12% 14%;
+    --accent: var(--montgomery-civic);
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 90%;                /* rgba white/40 */
     --input: 0 0% 90%;
-    --ring: 35 60% 55%;
+    --ring: var(--montgomery-signal);
     --chart-1: 35 60% 55%;
-    --chart-2: 36 44% 50%;
-    --chart-3: 210 80% 41%;
+    --chart-2: var(--montgomery-civic);
+    --chart-3: var(--montgomery-signal);
     --chart-4: 142 76% 55%;
     --chart-5: 27 87% 67%;
     --radius: 1.25rem;                 /* 20px Montgomery rounded-3xl */
-    --scrollbar-thumb: rgba(118, 94, 58, 0.42);
-    --scrollbar-thumb-hover: rgba(118, 94, 58, 0.62);
+    --scrollbar-thumb: rgba(0, 93, 122, 0.38);
+    --scrollbar-thumb-hover: rgba(0, 89, 142, 0.58);
     --scrollbar-track: rgba(255, 255, 255, 0.16);
   }
   html {
@@ -445,6 +455,9 @@
     color: hsl(var(--foreground));
   }
   .dark {
+    --montgomery-civic: 194 100% 24%;  /* #005d7a */
+    --montgomery-deep: 195 100% 12%;   /* #002e3d */
+    --montgomery-signal: 202 100% 28%; /* #00598e */
     --background: 30 12% 14%;           /* #1e1c19 Montgomery dark */
     --foreground: 0 0% 96%;             /* #f5f5f5 text-light */
     --card: 30 10% 18%;                /* dark card surfaces */
@@ -453,24 +466,24 @@
     --popover-foreground: 0 0% 96%;
     --primary: 35 60% 58%;
     --primary-foreground: 30 12% 14%;
-    --secondary: 36 60% 55%;
-    --secondary-foreground: 30 12% 14%;
+    --secondary: var(--montgomery-deep);
+    --secondary-foreground: 0 0% 96%;
     --muted: 30 12% 20%;
     --muted-foreground: 0 0% 64%;      /* #a3a3a3 text-mutedLight */
-    --accent: 35 60% 58%;
-    --accent-foreground: 30 12% 14%;
+    --accent: var(--montgomery-civic);
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
     --border: 30 12% 22%;             /* subtle dark border */
     --input: 30 12% 20%;
-    --ring: 35 60% 58%;
+    --ring: var(--montgomery-signal);
     --chart-1: 35 60% 58%;
-    --chart-2: 36 60% 55%;
-    --chart-3: 210 65% 52%;
+    --chart-2: var(--montgomery-civic);
+    --chart-3: var(--montgomery-signal);
     --chart-4: 142 76% 55%;
     --chart-5: 27 87% 67%;
-    --scrollbar-thumb: rgba(214, 183, 126, 0.34);
-    --scrollbar-thumb-hover: rgba(232, 206, 157, 0.5);
+    --scrollbar-thumb: rgba(0, 93, 122, 0.36);
+    --scrollbar-thumb-hover: rgba(0, 89, 142, 0.52);
     --scrollbar-track: rgba(255, 255, 255, 0.05);
   }
 

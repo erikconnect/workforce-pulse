@@ -10,6 +10,7 @@ Workforce Pulse helps city workforce and HR leaders, department leads (especiall
 - 📈 Identify which skills are newly required or rising fast
 - 🎯 Translate demand into training programs or recruitment actions
 - 🤝 Coordinate and share plans across stakeholders
+- 🏛️ Present Montgomery-specific civic branding with custom iconography and city seal placement
 
 **60-second loop:** What's changing? → What's driving it? → What should we do next? → Who owns it?
 
@@ -77,7 +78,16 @@ Workforce Pulse helps city workforce and HR leaders, department leads (especiall
    cp .env.example .env.local
    ```
 
-   See [.env.example](.env.example) for required variables.
+   `.env.example` defaults to `NEXT_PUBLIC_USE_STUBS=true`, so you can run the frontend without the backend for UI work.
+
+   For full-stack development, set:
+
+   ```bash
+   NEXT_PUBLIC_USE_STUBS=false
+   NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+   ```
+
+   See [.env.example](.env.example) for the complete variable list.
 
 3. **Run the development server**
 
@@ -86,6 +96,90 @@ Workforce Pulse helps city workforce and HR leaders, department leads (especiall
    ```
 
    Open [http://localhost:3000](http://localhost:3000).
+
+## 🔐 Authentication Setup (Register + Sign In)
+
+Workforce Pulse supports:
+
+- Demo credentials (local development)
+- Google OAuth
+- LinkedIn OAuth
+- GitHub OAuth
+- Microsoft (Azure AD) OAuth
+- Auth0 OAuth (optional)
+
+The `/login` page now includes a **Register** mode. Any configured OAuth provider will appear automatically.
+
+### 1. NextAuth Base Variables
+
+Add these to `.env.local`:
+
+```bash
+NEXTAUTH_SECRET=your_generated_secret
+NEXTAUTH_URL=http://localhost:3000
+```
+
+Generate a secret with:
+
+```bash
+npx auth secret
+```
+
+### 2. OAuth Provider Variables
+
+Configure one or more providers:
+
+```bash
+# Google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# LinkedIn
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+
+# GitHub
+GITHUB_ID=
+GITHUB_SECRET=
+# (alternative naming also supported)
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Microsoft / Azure AD
+AZURE_AD_CLIENT_ID=
+AZURE_AD_CLIENT_SECRET=
+AZURE_AD_TENANT_ID=
+
+# Auth0 (optional)
+AUTH0_CLIENT_ID=
+AUTH0_CLIENT_SECRET=
+AUTH0_ISSUER=
+```
+
+### 3. Redirect/Callback URL
+
+For each provider app, set callback URL to:
+
+```text
+http://localhost:3000/api/auth/callback/<provider>
+```
+
+Examples:
+
+- Google: `http://localhost:3000/api/auth/callback/google`
+- LinkedIn: `http://localhost:3000/api/auth/callback/linkedin`
+- GitHub: `http://localhost:3000/api/auth/callback/github`
+- Azure AD: `http://localhost:3000/api/auth/callback/azure-ad`
+- Auth0: `http://localhost:3000/api/auth/callback/auth0`
+
+For production, replace `http://localhost:3000` with your deployed domain.
+
+### 4. Demo Accounts (Credentials Provider)
+
+- Admin: `admin@montgomery.gov` / `demo123`
+- Citizen: `citizen@montgomery.gov` / `demo123`
+
+Use these when OAuth keys are not configured yet.
 
 ### Backend Setup
 
@@ -105,8 +199,11 @@ Workforce Pulse helps city workforce and HR leaders, department leads (especiall
    Required variables:
    - `MONGODB_URI` - Your MongoDB connection string
    - `PORT` - Server port (default: 5000)
+   - `API_VERSION` - API prefix version (default: `v1`)
+   - `CORS_ORIGIN` - Frontend origin (default: `http://localhost:3000`)
    - `JWT_SECRET` - Secret for JWT tokens
    - `BRIGHT_DATA_API_KEY` - For job scraping
+   - `BRIGHT_DATA_BROWSER_WSS` - Optional Bright Data Scraping Browser endpoint
    - `USAJOBS_API_KEY` - For federal job listings
 
 3. **Run backend server**
@@ -149,6 +246,22 @@ Workforce Pulse helps city workforce and HR leaders, department leads (especiall
 7. **Playbooks** — Shareable action plans with likes and saves.
 8. **Map** — Geospatial view of workforce data overlaid on Montgomery city landmarks.
 9. **Crawl Runner** — Trigger on-demand job scraping from LinkedIn, Indeed, Glassdoor.
+
+## 🧪 Development Modes
+
+### Frontend-only / stub mode
+
+- Keep `NEXT_PUBLIC_USE_STUBS=true` in `.env.local`
+- Run `npm run dev` from the repo root
+- Use this mode for UI work, branding, and page development without MongoDB or the Express API
+
+### Full-stack mode
+
+- Set `NEXT_PUBLIC_USE_STUBS=false`
+- Set `NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1`
+- Start MongoDB
+- Run `npm run dev` in `backend/`
+- Run `npm run dev` in the repo root
 
 ## 🔌 Data Sources
 
@@ -198,6 +311,7 @@ workforce-pulse/
 │   │       ├── city-jobs/      # JobAps RSS parser
 │   │       └── workforce-data/ # ArcGIS data endpoints
 │   ├── components/             # React components
+│   │   ├── branding/           # Custom icon set + Montgomery city badge
 │   │   ├── dashboard/          # Dashboard components
 │   │   ├── jobs/               # Job-related components
 │   │   ├── sectors/            # Sector components
@@ -219,6 +333,9 @@ workforce-pulse/
 │       │   ├── JobPosting.js   # Job posting schema
 │       │   ├── Mission.js      # Mission schema
 │       │   ├── Playbook.js     # Playbook schema
+│       │   ├── PulseCheckIn.js # Daily pulse check-in schema
+│       │   ├── CommunityProfile.js
+│       │   ├── BenefitRedemption.js
 │       │   ├── Sector.js       # Sector schema
 │       │   └── Skill.js        # Skill schema
 │       ├── routes/             # Express routes
@@ -226,7 +343,6 @@ workforce-pulse/
 │       ├── middleware/         # Express middleware
 │       └── config/             # Configuration
 ├── docs/                       # Documentation
-│   ├── README.md               # Documentation hub
 │   ├── getting-started/        # Setup guides
 │   ├── architecture/           # Architecture docs
 │   ├── development/            # Dev guides
@@ -253,7 +369,7 @@ See [docs/getting-started/agents.md](docs/getting-started/agents.md) for complet
 
 ## 📚 Documentation
 
-**👉 Start Here**: [Documentation Hub](docs/README.md) — Complete guide to all documentation, organized by role
+**👉 Start Here**: [Setup Guide](docs/getting-started/setup.md) and [Quick Reference](docs/getting-started/quick-reference.md)
 
 ### Quick Links
 
@@ -280,7 +396,8 @@ See [docs/getting-started/agents.md](docs/getting-started/agents.md) for complet
 
 Add the key to `.env.local` and restart the dev server.
 
-**"BRIGHT_DATA_BROWSER_WSS not configured"**
+#### "BRIGHT_DATA_BROWSER_WSS not configured"
+
 - Required for POST `/api/jobs/scrape` (Indeed scraping).
 Get the WebSocket URL from Bright Data Scraping Browser zone.
 
@@ -288,14 +405,16 @@ Get the WebSocket URL from Bright Data Scraping Browser zone.
 
 Crawls can take several minutes. The Crawl Runner polls automatically.
 
-**ArcGIS / JobAps errors**
+#### ArcGIS / JobAps errors
+
 Check that `NEXT_PUBLIC_ARCGIS_*` and `JOBAPS_RSS_URL` are set in `.env.local`.
 
 #### MongoDB connection errors
 
 Ensure `MONGODB_URI` is set correctly in `backend/.env`. Check MongoDB is running locally or your cloud connection is active.
 
-**USAJOBS API errors**
+#### USAJOBS API errors
+
 - Verify `USAJOBS_API_KEY` and `USAJOBS_USER_AGENT` are set.
 - User agent must be a valid email address.
 
@@ -330,7 +449,7 @@ docker run -p 5000:5000 --env-file .env workforce-pulse-backend
 NEXT_PUBLIC_USE_STUBS=false
 
 # API endpoints
-NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
 
 # Bright Data
 BRIGHT_DATA_API_KEY=your_api_key
@@ -353,6 +472,17 @@ NEXT_PUBLIC_ARCGIS_STATIONS_URL=https://services7.arcgis.com/...
 # NextAuth
 NEXTAUTH_SECRET=your_secret
 NEXTAUTH_URL=http://localhost:3000
+
+# OAuth Providers (optional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+GITHUB_ID=
+GITHUB_SECRET=
+AZURE_AD_CLIENT_ID=
+AZURE_AD_CLIENT_SECRET=
+AZURE_AD_TENANT_ID=
 ```
 
 ### Backend (`backend/.env`)
@@ -386,4 +516,4 @@ Built for World Wide Vibes Hackathon 2, focusing on civic tech solutions for Mon
 
 ---
 
-**Questions?** Check the [Documentation Hub](docs/README.md) or [Quick Reference](docs/getting-started/quick-reference.md) for answers.
+**Questions?** Check the [Setup Guide](docs/getting-started/setup.md) or [Quick Reference](docs/getting-started/quick-reference.md) for answers.

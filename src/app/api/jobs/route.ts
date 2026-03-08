@@ -19,7 +19,7 @@ export async function GET() {
   // On subsequent runs (cache valid), this does nothing
   await triggerBackgroundScrape();
 
-  const count = jobStore.count();
+  const count = await jobStore.count();
   const insights = jobStore.getInsights();
   const cacheStatus = getCacheStatus();
   const sources = getLastSources();
@@ -44,6 +44,6 @@ export async function GET() {
 }
 
 export async function DELETE() {
-  jobStore.clear();
+  await jobStore.clear();
   return NextResponse.json({ cleared: true });
 }

@@ -1,119 +1,80 @@
-import type { Benefit, MissionMemberProfile, RewardRedemption } from "../types";
-import { deductPointsForRedemption } from "./community-profile";
+import type { Benefit, MissionMemberProfile, RewardRedemption } from '../types';
 
-const STUB_CATALOG: Benefit[] = [
-  {
-    id: "app-priority",
-    title: "Priority candidacy",
-    description: "Get your application highlighted for partner employer roles in Montgomery.",
-    category: "application",
-    costPoints: 150,
-    eligibility: { minPoints: 100, minLevel: 2 },
-    type: "redeemable",
-  },
-  {
-    id: "app-fast-lane",
-    title: "Fast-lane triage",
-    description: "Priority screening for selected city and partner positions.",
-    category: "application",
-    costPoints: 250,
-    eligibility: { minPoints: 200, minLevel: 3 },
-    type: "redeemable",
-  },
-  {
-    id: "skills-course",
-    title: "Free training course voucher",
-    description: "Access one sponsored course from our training partners.",
-    category: "skills",
-    costPoints: 100,
-    eligibility: { minPoints: 50 },
-    type: "redeemable",
-  },
-  {
-    id: "skills-cert",
-    title: "Certification voucher",
-    description: "Subsidized certification exam for in-demand skills.",
-    category: "skills",
-    costPoints: 300,
-    eligibility: { minPoints: 200, minLevel: 4 },
-    type: "redeemable",
-  },
-  {
-    id: "contrib-badge",
-    title: "City Contributor badge",
-    description: "Exclusive badge for active workforce contributors.",
-    category: "contribution",
-    costPoints: 0,
-    eligibility: { minPoints: 500 },
-    type: "unlockable",
-  },
-  {
-    id: "contrib-playbook",
-    title: "Premium playbook access",
-    description: "Unlock advanced playbooks and mentorship resources.",
-    category: "contribution",
-    costPoints: 200,
-    eligibility: { minPoints: 150, requiredBadges: ["playbook-curator"] },
-    type: "redeemable",
-  },
-];
+const API = process.env.NEXT_PUBLIC_API_URL ?? '';
 
-const redemptionsStore: RewardRedemption[] = [];
+type ApiEnvelope<T> = { success?: boolean; data?: T; error?: { message?: string } };
 
-function checkEligibility(benefit: Benefit, profile: MissionMemberProfile): boolean {
+function assertApiConfigured() {
+  if (!API) {
+    throw new Error('NEXT_PUBLIC_API_URL not configured');
+  }
+}
+
+function unwrapData<T>(payload: ApiEnvelope<T> | T): T {
+  if (payload && typeof payload === 'object' && 'data' in (payload as ApiEnvelope<T>)) {
+    return ((payload as ApiEnvelope<T>).data ?? payload) as T;
+  }
+  return payload as T;
+}
+
+function checkEligibility(benefit: Benefit, profile: MissionMemberProfile): { eligible: boolean; reason?: string } {
   const e = benefit.eligibility;
-  if (e.minPoints != null && profile.points < e.minPoints) return false;
-  if (e.minLevel != null && profile.level < e.minLevel) return false;
+  if (e.minPoints != null && profile.points < e.minPoints) return { eligible: false, reason: `Need ${e.minPoints - profile.points} more points` };
+  if (e.minLevel != null && profile.level < e.minLevel) return { eligible: false, reason: 'Eligibility requirements not met' };
   if (e.requiredBadges?.length) {
     const hasAll = e.requiredBadges.every((bid) => profile.badges.some((b) => b.id === bid));
-    if (!hasAll) return false;
+    if (!hasAll) return { eligible: false, reason: 'Eligibility requirements not met' };
   }
-  return true;
+  if (profile.points < benefit.costPoints) return { eligible: false, reason: `Need ${benefit.costPoints - profile.points} more points` };
+  return { eligible: true };
 }
 
-export function fetchBenefitsCatalog(): Benefit[] {
-  return [...STUB_CATALOG];
+export async function fetchBenefitsCatalog(): Promise<Benefit[]> {
+  assertApiConfigured();
+  const res = await fetch(`${API}/benefits/catalog`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to fetch benefits catalog: ${res.status}`);
+  const data = (await res.json()) as ApiEnvelope<Benefit[]> | Benefit[];
+  return unwrapData(data);
 }
 
-export function fetchRedemptions(): RewardRedemption[] {
-  return [...redemptionsStore];
+export async function fetchRedemptions(): Promise<RewardRedemption[]> {
+  assertApiConfigured();
+  const res = await fetch(`${API}/benefits/redemptions?userId=member-city-admin`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to fetch redemptions: ${res.status}`);
+  const data = (await res.json()) as ApiEnvelope<RewardRedemption[]> | RewardRedemption[];
+  return unwrapData(data);
 }
 
 export function checkBenefitEligibility(
   benefitId: string,
-  profile: MissionMemberProfile
+  profile: MissionMemberProfile,
+  catalog: Benefit[]
 ): { eligible: boolean; reason?: string } {
-  const benefit = STUB_CATALOG.find((b) => b.id === benefitId);
-  if (!benefit) return { eligible: false, reason: "Benefit not found" };
-  if (profile.points < benefit.costPoints)
-    return { eligible: false, reason: `Need ${benefit.costPoints - profile.points} more points` };
-  if (!checkEligibility(benefit, profile))
-    return { eligible: false, reason: "Eligibility requirements not met" };
-  return { eligible: true };
+  const benefit = catalog.find((b) => b.id === benefitId);
+  if (!benefit) return { eligible: false, reason: 'Benefit not found' };
+  return checkEligibility(benefit, profile);
 }
 
-export function redeemBenefit(
+export async function redeemBenefit(
   benefitId: string,
-  profile: MissionMemberProfile
-): { success: boolean; redemption?: RewardRedemption; error?: string } {
-  const benefit = STUB_CATALOG.find((b) => b.id === benefitId);
-  if (!benefit) return { success: false, error: "Benefit not found" };
-  const check = checkBenefitEligibility(benefitId, profile);
+  profile: MissionMemberProfile,
+  catalog: Benefit[]
+): Promise<{ success: boolean; redemption?: RewardRedemption; error?: string }> {
+  const check = checkBenefitEligibility(benefitId, profile, catalog);
   if (!check.eligible) return { success: false, error: check.reason };
 
-  if (benefit.costPoints > 0) {
-    const updated = deductPointsForRedemption(benefit.costPoints);
-    if (!updated) return { success: false, error: "Insufficient points" };
+  assertApiConfigured();
+  const res = await fetch(`${API}/benefits/redeem`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ benefitId, userId: 'member-city-admin', communityUserId: 'local-user' }),
+  });
+
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as ApiEnvelope<unknown>;
+    return { success: false, error: payload.error?.message ?? `Redeem failed (${res.status})` };
   }
 
-  const redemption: RewardRedemption = {
-    id: `red-${Date.now()}`,
-    benefitId,
-    userId: profile.id,
-    pointsSpent: benefit.costPoints,
-    redeemedAt: new Date().toISOString(),
-    status: "fulfilled",
-  };
-  redemptionsStore.push(redemption);
-  return { success: true, redemption };
+  const payload = (await res.json()) as ApiEnvelope<RewardRedemption> | RewardRedemption;
+  return { success: true, redemption: unwrapData(payload) };
 }

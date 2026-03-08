@@ -50,7 +50,7 @@ interface JobRecommendationsResponse {
 export async function GET() {
   try {
     await triggerBackgroundScrape()
-    const postings = jobStore.getAll()
+    const postings = await jobStore.getAll()
 
     // Aggregate skill demand
     const skillCount = new Map<string, { count: number; jobs: JobPosting[] }>()

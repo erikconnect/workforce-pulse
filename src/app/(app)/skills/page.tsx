@@ -103,7 +103,7 @@ function SkillCardExpanded({ skill, sectorMap }: { skill: Skill; sectorMap: Map<
   const trainingCount = skill.trainingResources.length
   const primarySector = relatedSectors[0]
   const awardSkillAction = useMutation({
-    mutationFn: ({ action }: { action: "fit" | "pathway" }) => Promise.resolve(recordSkillAction(skill.id, action)),
+    mutationFn: ({ action }: { action: "fit" | "pathway" }) => recordSkillAction(skill.id, action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["missionMemberProfile"] })
     },

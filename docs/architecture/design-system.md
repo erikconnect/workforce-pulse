@@ -1,3 +1,18 @@
+# Workforce Pulse Design System
+
+## Brand Palette
+
+- Montgomery Gold: retained as the shared `primary` token so the existing identity still leads buttons, icon wells, and core actions.
+- Civic Blue: `#005d7a` mapped to `accent` for supporting emphasis, branded overlays, and secondary highlights.
+- Deep Montgomery Blue: `#002e3d` mapped to `secondary` for contrast surfaces, dark overlays, and low-noise brand depth.
+- Signal Blue: `#00598e` mapped to `ring` and supporting chart variation for focus states and data accents.
+
+## Token Usage
+
+- Global CSS tokens live in `src/app/globals.css` and define the theme-level `primary`, `secondary`, `accent`, `ring`, and chart colors.
+- Tailwind exposes the raw palette in `tailwind.config.ts` as `montgomery.civic`, `montgomery.deep`, and `montgomery.signal` for explicit one-off use.
+- Shared branding components should prefer tokens first and only use raw palette colors when a precise brand treatment is required.
+
 # Omni-Guide: Mastering Cursor Interactions
 
 ## Introduction

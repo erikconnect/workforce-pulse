@@ -343,7 +343,7 @@ export function CitizenDashboard() {
                       className={cn(
                         "h-10 w-5 rounded-full transition-all",
                         filled
-                          ? "bg-primary/75 shadow-[0_6px_14px_rgba(209,154,71,0.24)]"
+                          ? "bg-primary/75 shadow-[0_6px_14px_rgba(0,93,122,0.24)]"
                           : "bg-black/5 shadow-inner dark:bg-black/40",
                         isToday && !filled && "border border-dashed border-primary/45 bg-transparent",
                       )}

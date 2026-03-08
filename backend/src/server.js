@@ -4,10 +4,11 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import { connectDB } from './config/database';
-import { errorHandler } from './middleware/errorHandler';
-import { notFound } from './middleware/notFound';
-import routes from './routes';
+import { connectDB } from './config/database.js';
+import { seedDatabase } from './utils/seeder.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { notFound } from './middleware/notFound.js';
+import routes from './routes/index.js';
 
 dotenv.config();
 
@@ -15,8 +16,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const API_VERSION = process.env.API_VERSION || 'v1';
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and seed data
+connectDB().then(() => {
+  seedDatabase().catch(err => {
+    console.error('Failed to seed database:', err);
+    process.exit(1);
+  });
+});
 
 // Middleware
 app.use(helmet());

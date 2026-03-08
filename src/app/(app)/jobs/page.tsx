@@ -14,7 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { JobCard } from "@/components/jobs/job-card"
+import { JobDataStatus } from "@/components/dashboard/job-data-status"
+import { SourceMetadataGrid } from "@/components/jobs/source-metadata-grid"
 import { useUserRole } from "@/hooks/use-user-role"
+import { fetchJobInsights } from "@/services"
 import type { JobPosting } from "@/services/types"
 
 interface CityJob {
@@ -47,6 +50,12 @@ interface CityJobsResponse {
 interface PostingsResponse {
   count: number
   postings: JobPosting[]
+}
+
+interface JobInsightsResponse {
+  count: number
+  insights: unknown
+  sources?: Record<string, { count: number; errors: string[]; url: string; source: string }>
 }
 
 function normalizePosting(p: JobPosting): DisplayJob {
@@ -155,6 +164,13 @@ export default function JobsPage() {
     enabled: isAdmin,
   })
 
+  const { data: jobInsightsData } = useQuery<JobInsightsResponse>({
+    queryKey: ["job-insights"],
+    queryFn: fetchJobInsights,
+    staleTime: 60_000,
+    enabled: isAdmin,
+  })
+
   // Merge city jobs + store postings for admin; city only for citizen
   const allJobs = useMemo<DisplayJob[]>(() => {
     const cityJobs: DisplayJob[] = (cityData?.jobs ?? []).map((job) => ({
@@ -219,6 +235,19 @@ export default function JobsPage() {
             : "Browse open City of Montgomery positions and apply directly."}
         </p>
       </div>
+
+      {isAdmin && (
+        <div className="opacity-0 animate-fade-in-up animate-stagger-2">
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+            <JobDataStatus />
+            <SourceMetadataGrid
+              jobs={allJobs}
+              sources={jobInsightsData?.sources}
+              cityLastFetched={cityData?.lastFetched}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in-up animate-stagger-2">

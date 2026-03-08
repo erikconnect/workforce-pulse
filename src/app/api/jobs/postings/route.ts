@@ -11,6 +11,6 @@ import { triggerBackgroundScrape } from "../scrape-cache";
 
 export async function GET() {
   await triggerBackgroundScrape();
-  const postings = jobStore.getAll();
+  const postings = await jobStore.getAll();
   return NextResponse.json({ postings, count: postings.length });
 }

@@ -43,10 +43,8 @@ export async function POST(req: NextRequest) {
     try {
       console.log("[Jobs Scrape API] Scraping Indeed...");
       const indeedResult = await scrapeIndeedJobs(queries);
-      for (const raw of indeedResult.jobs) {
-        const posting = normalizeIndeedRecord(raw as unknown as RawIndeedRecord);
-        jobStore.upsert(posting);
-      }
+      const postings = indeedResult.jobs.map(raw => normalizeIndeedRecord(raw as unknown as RawIndeedRecord));
+      await jobStore.bulkUpsert(postings);
       results.indeed.jobs = indeedResult.jobs.length;
       console.log(`[Jobs Scrape API] ✅ Indeed: ${indeedResult.jobs.length} jobs`);
     } catch (err) {
@@ -58,10 +56,8 @@ export async function POST(req: NextRequest) {
     try {
       console.log("[Jobs Scrape API] Scraping LinkedIn...");
       const linkedinResult = await scrapeLinkedInJobs(queries);
-      for (const raw of linkedinResult.jobs) {
-        const posting = normalizeLinkedInRecord(raw as unknown as RawLinkedInRecord);
-        jobStore.upsert(posting);
-      }
+      const postings = linkedinResult.jobs.map(raw => normalizeLinkedInRecord(raw as unknown as RawLinkedInRecord));
+      await jobStore.bulkUpsert(postings);
       results.linkedin.jobs = linkedinResult.jobs.length;
       console.log(`[Jobs Scrape API] ✅ LinkedIn: ${linkedinResult.jobs.length} jobs`);
     } catch (err) {
@@ -73,10 +69,8 @@ export async function POST(req: NextRequest) {
     try {
       console.log("[Jobs Scrape API] Scraping Glassdoor...");
       const glassdoorResult = await scrapeGlassdoorJobs(queries);
-      for (const raw of glassdoorResult.jobs) {
-        const posting = normalizeGlassdoorRecord(raw as unknown as RawGlassdoorRecord);
-        jobStore.upsert(posting);
-      }
+      const postings = glassdoorResult.jobs.map(raw => normalizeGlassdoorRecord(raw as unknown as RawGlassdoorRecord));
+      await jobStore.bulkUpsert(postings);
       results.glassdoor.jobs = glassdoorResult.jobs.length;
       console.log(`[Jobs Scrape API] ✅ Glassdoor: ${glassdoorResult.jobs.length} jobs`);
     } catch (err) {
@@ -85,11 +79,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Derive insights
-    const insights = deriveInsights(jobStore.getAll());
+    const insights = deriveInsights(await jobStore.getAll());
     jobStore.setInsights(insights);
 
     results.totalNew = results.indeed.jobs + results.linkedin.jobs + results.glassdoor.jobs;
-    results.totalStored = jobStore.count();
+    results.totalStored = await jobStore.count();
 
     const duration = Date.now() - startTime;
     console.log(`[Jobs Scrape API] ✅ Complete in ${(duration / 1000).toFixed(1)}s`);
@@ -109,7 +103,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    count: jobStore.count(),
+    count: await jobStore.count(),
     insights: jobStore.getInsights(),
     cache: getCacheStatus(),
   });
