@@ -83,9 +83,10 @@ function LoginForm() {
           </Button>
         </form>
 
-        <p className="text-xs text-muted-foreground text-center">
-          Demo: admin@montgomery.gov / demo123
-        </p>
+        <div className="text-xs text-muted-foreground text-center space-y-1">
+          <p>Admin: admin@montgomery.gov / demo123</p>
+          <p>Citizen: citizen@montgomery.gov / demo123</p>
+        </div>
 
         <p className="text-center">
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">

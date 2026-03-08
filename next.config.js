@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // Playwright must not be bundled by webpack — load from node_modules at runtime.
-    serverComponentsExternalPackages: ["playwright-core"],
+  // Keep external runtime packages out of the server bundle.
+  serverExternalPackages: ["playwright-core"],
+  turbopack: {
+    // Avoid incorrect monorepo root inference when multiple lockfiles exist.
+    root: __dirname,
   },
 };
 

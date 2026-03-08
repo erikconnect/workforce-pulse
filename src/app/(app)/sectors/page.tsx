@@ -6,6 +6,7 @@ import { fetchMissionMemberProfile, fetchRoles, fetchSectors, fetchSkills, recor
 import { SectorCard } from "@/components/sectors/sector-card"
 import { SectorCompare } from "@/components/sectors/sector-compare"
 import { SectorRadar } from "@/components/sectors/sector-radar"
+import { useTotalJobs } from "@/hooks/use-total-jobs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -74,6 +75,8 @@ export default function SectorsPage() {
     queryKey: ["missionMemberProfile"],
     queryFn: fetchMissionMemberProfile,
   })
+  const { totalJobs } = useTotalJobs()
+  
   const recordSectorCompare = useMutation({
     mutationFn: (sectorId: string) => Promise.resolve(recordSectorAction(sectorId, "compare")),
     onSuccess: () => {
@@ -93,7 +96,7 @@ export default function SectorsPage() {
 
   const criticalCount = sectors?.filter((s) => s.status === "critical").length ?? 0
   const watchCount = sectors?.filter((s) => s.status === "watch").length ?? 0
-  const stableCount = sectors?.filter((s) => s.status === "stable").length ?? 0
+  const stableCount = totalJobs > 0 ? totalJobs : (sectors?.reduce((sum, s) => sum + s.openRolesCount, 0) ?? 0)
   const totalEmployees = sectors?.reduce((sum, s) => sum + s.employeeCount, 0) ?? 0
   const totalOpenRoles = sectors?.reduce((sum, s) => sum + s.openRolesCount, 0) ?? 0
   const topCriticalSector = useMemo(() => {

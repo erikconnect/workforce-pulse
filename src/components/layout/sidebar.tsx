@@ -10,10 +10,13 @@ import {
   Target,
   BookOpen,
   Search,
+  GraduationCap,
+  Briefcase,
   Settings,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUserRole } from "@/hooks/use-user-role"
 
 interface NavItem {
   href: string
@@ -21,14 +24,24 @@ interface NavItem {
   icon: LucideIcon
 }
 
-const NAV_ITEMS: NavItem[] = [
+const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/map", label: "Map", icon: MapPin },
   { href: "/sectors", label: "Sectors", icon: Grid3X3 },
+  { href: "/jobs", label: "Jobs", icon: Briefcase },
   { href: "/skills", label: "Skills", icon: Zap },
   { href: "/missions", label: "Missions", icon: Target },
   { href: "/playbooks", label: "Playbooks", icon: BookOpen },
   { href: "/crawl", label: "Crawl", icon: Search },
+]
+
+const CITIZEN_NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/jobs", label: "Jobs", icon: Briefcase },
+  { href: "/map", label: "Map", icon: MapPin },
+  { href: "/skills", label: "Training", icon: GraduationCap },
+  { href: "/missions", label: "Missions", icon: Target },
+  { href: "/playbooks", label: "Playbooks", icon: BookOpen },
 ]
 
 function isActive(pathname: string, href: string): boolean {
@@ -61,6 +74,8 @@ function SidebarLogo() {
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname()
+  const { isAdmin } = useUserRole()
+  const navItems = isAdmin ? ADMIN_NAV_ITEMS : CITIZEN_NAV_ITEMS
 
   return (
     <div className="flex h-full w-full flex-col items-center py-8 border-r border-glass-border-light dark:border-glass-border-dark shrink-0 glass-panel rounded-none">
@@ -70,7 +85,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       <nav className="flex-1 w-full flex flex-col gap-6 px-0">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = isActive(pathname, item.href)
           return (
             <Link

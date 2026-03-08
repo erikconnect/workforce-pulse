@@ -81,7 +81,11 @@ function LiveScrapeInner({ compact }: { compact: boolean }) {
       queryClient.invalidateQueries({ queryKey: ["pulseSummary"] })
       queryClient.invalidateQueries({ queryKey: ["sectors"] })
       queryClient.invalidateQueries({ queryKey: ["cityJobs"] })
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ["job-insights"] })
+      
+      console.log("[LiveScrape] ✅ Queries invalidated, UI should refresh with new data")
+    } catch (err) {
+      console.error("[LiveScrape] ❌ Scrape failed:", err)
       setStatus("error")
       setProgress(0)
     }

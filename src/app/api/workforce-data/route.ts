@@ -18,6 +18,14 @@ export const revalidate = 3600;
 
 const FETCH_TIMEOUT_MS = 15000;
 
+function normalizeArcgisLayerUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim().replace(/\/$/, "");
+  const featureServerMatch = trimmed.match(/\/FeatureServer(?:\/(\d+))?$/i);
+  if (!featureServerMatch) return trimmed;
+  const hasLayerId = featureServerMatch[1] != null;
+  return hasLayerId ? trimmed : `${trimmed}/0`;
+}
+
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -35,8 +43,9 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 // ArcGIS FeatureServer count query
 async function arcgisCount(url: string): Promise<number> {
   try {
+    const normalized = normalizeArcgisLayerUrl(url);
     const res = await fetchWithTimeout(
-      `${url}/query?where=1%3D1&returnCountOnly=true&f=json`
+      `${normalized}/query?where=1%3D1&returnCountOnly=true&f=json`
     );
     if (!res.ok) return 0;
     const json = await res.json();

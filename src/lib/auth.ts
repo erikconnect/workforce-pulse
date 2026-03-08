@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { ROLE_BY_EMAIL } from "./roles";
 
 if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
   process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
@@ -18,21 +19,23 @@ export const authOptions: NextAuthOptions = {
         const email = (credentials.email as string).trim().toLowerCase();
         const password = (credentials.password as string).trim();
 
-        const validUsers: Record<string, string> = {
-          "admin@montgomery.gov": "demo123",
-          "city@montgomery.gov": "demo123",
+        const validUsers: Record<string, { password: string; name: string }> = {
+          "admin@montgomery.gov": { password: "demo123", name: "City Admin" },
+          "city@montgomery.gov": { password: "demo123", name: "City Manager" },
+          "citizen@montgomery.gov": { password: "demo123", name: "Alex Citizen" },
         };
-        const pwd = validUsers[email];
-        if (!pwd || pwd !== password) return null;
 
-        const name = email.split("@")[0];
-        const city = "Montgomery, AL";
+        const entry = validUsers[email];
+        if (!entry || entry.password !== password) return null;
+
+        const role = ROLE_BY_EMAIL[email] ?? "citizen";
         return {
-          id: "1",
+          id: email,
           email,
-          name: name.charAt(0).toUpperCase() + name.slice(1) + " Admin",
+          name: entry.name,
           image: null,
-          city,
+          city: "Montgomery, AL",
+          role,
         };
       },
     }),
@@ -44,14 +47,16 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email ?? undefined;
         token.name = user.name ?? undefined;
         token.picture = user.image ?? undefined;
-        token.city = (user as { city?: string }).city;
+        token.city = user.city;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string }).id = token.id as string;
-        (session.user as { city?: string }).city = token.city as string;
+        session.user.id = token.id as string;
+        session.user.city = token.city as string;
+        session.user.role = token.role;
       }
       return session;
     },

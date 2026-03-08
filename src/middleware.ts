@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { ADMIN_ONLY_ROUTES } from "@/lib/roles";
 
 if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
   process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
@@ -13,7 +14,19 @@ const secret =
     : undefined);
 
 export default withAuth(
-  function middleware() {
+  function middleware(req) {
+    const token = req.nextauth.token;
+    const pathname = req.nextUrl.pathname;
+
+    if (token?.role !== "admin") {
+      const isAdminRoute = ADMIN_ONLY_ROUTES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
+      );
+      if (isAdminRoute) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+    }
+
     return NextResponse.next();
   },
   {
@@ -38,5 +51,6 @@ export const config = {
     "/playbooks/:path*",
     "/crawl/:path*",
     "/settings/:path*",
+    "/jobs/:path*",
   ],
 };

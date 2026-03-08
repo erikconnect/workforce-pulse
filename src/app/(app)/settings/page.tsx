@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label"
 import { BrightDataSettingsTab } from "@/components/settings/BrightDataSettingsTab"
 import { Button } from "@/components/ui/button"
 import type { MissionMemberProfile } from "@/services/types"
+import { useUserRole } from "@/hooks/use-user-role"
+import { cn } from "@/lib/utils"
 
 function BenefitsTab({ profile }: { profile: MissionMemberProfile | undefined }) {
   const queryClient = useQueryClient()
@@ -80,6 +82,7 @@ function BenefitsTab({ profile }: { profile: MissionMemberProfile | undefined })
 
 export default function SettingsPage() {
   const { data: session } = useSession()
+  const { isAdmin } = useUserRole()
   const { data: profile } = useQuery({
     queryKey: ["missionMemberProfile"],
     queryFn: fetchMissionMemberProfile,
@@ -104,7 +107,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="account" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1">
+        <TabsList className={cn("grid w-full gap-1", isAdmin ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-3")}>
           <TabsTrigger value="account" className="gap-2">
             <User className="h-4 w-4" />
             Account
@@ -113,18 +116,22 @@ export default function SettingsPage() {
             <Trophy className="h-4 w-4" />
             Points
           </TabsTrigger>
-          <TabsTrigger value="benefits" className="gap-2">
-            <Gift className="h-4 w-4" />
-            Benefits
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="benefits" className="gap-2">
+              <Gift className="h-4 w-4" />
+              Benefits
+            </TabsTrigger>
+          )}
           <TabsTrigger value="preferences" className="gap-2">
             <Bell className="h-4 w-4" />
             Preferences
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-2">
-            <Plug className="h-4 w-4" />
-            Integrations
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="integrations" className="gap-2">
+              <Plug className="h-4 w-4" />
+              Integrations
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="account" className="mt-6">
@@ -246,9 +253,11 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="benefits" className="mt-6">
-          <BenefitsTab profile={profile} />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="benefits" className="mt-6">
+            <BenefitsTab profile={profile} />
+          </TabsContent>
+        )}
 
         <TabsContent value="preferences" className="mt-6">
           <Card className="glass-panel border-white/35 dark:border-white/10">
@@ -275,16 +284,18 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="integrations" className="mt-6">
-          <Card className="glass-panel border-white/35 dark:border-white/10">
-            <CardHeader>
-              <CardTitle className="text-base">Bright Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <BrightDataSettingsTab />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="integrations" className="mt-6">
+            <Card className="glass-panel border-white/35 dark:border-white/10">
+              <CardHeader>
+                <CardTitle className="text-base">Bright Data</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BrightDataSettingsTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

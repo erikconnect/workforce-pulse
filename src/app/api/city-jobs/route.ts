@@ -23,6 +23,8 @@ export interface CityJob {
   employmentType: string;
   recruitCode: string;
   sectorId: string | null;
+  description: string;
+  location: string;
 }
 
 // Map JobAps department names → our sector IDs
@@ -162,6 +164,9 @@ export async function GET() {
       .map((block): CityJob => {
         const link = extractLink(block);
         const department = extractTag(block, "department");
+        const rawDesc = extractTag(block, "description");
+        // Strip any leftover HTML tags from the RSS description
+        const description = rawDesc.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
         return {
           title:          extractTag(block, "title"),
           link,
@@ -173,6 +178,8 @@ export async function GET() {
           employmentType: extractTag(block, "employmentType"),
           recruitCode:    parseRecruitCode(link),
           sectorId:       classifyDept(department),
+          description,
+          location:       "Montgomery, AL",
         };
       })
       // Filter out the "Application On-File" template placeholder

@@ -13,7 +13,7 @@ interface ScrapeStatus {
   error: string | null;
 }
 
-export function useScrapeJobs() {
+export function useScrapeJobs(enabled = true) {
   const [status, setStatus] = useState<ScrapeStatus>({
     isLoading: false,
     lastScrapeAt: null,
@@ -22,6 +22,7 @@ export function useScrapeJobs() {
   });
 
   useEffect(() => {
+    if (!enabled) return;
     // Trigger background scrape on mount
     const triggerScrape = async () => {
       try {
@@ -60,7 +61,7 @@ export function useScrapeJobs() {
     };
 
     triggerScrape();
-  }, []);
+  }, [enabled]);
 
   return status;
 }

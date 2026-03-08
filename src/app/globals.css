@@ -32,14 +32,16 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
   /* Montgomery glass-panel — from design HTML */
-  .glass-panel {
+  .glass-panel,
+  .glass-card {
     background: rgba(255, 255, 255, 0.4);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
-  .dark .glass-panel {
+  .dark .glass-panel,
+  .dark .glass-card {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
@@ -54,10 +56,6 @@
     border-style: none;
     border-image: none;
     box-shadow: none;
-  }
-  /* Alias for backward compatibility */
-  .glass-card {
-    @apply glass-panel;
   }
   .glass-card-strong {
     background: rgba(255, 255, 255, 0.5);
@@ -202,11 +200,19 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.16) 100%);
   }
   .montgomery-hero-photo {
-    background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAvWNOslmBCqFX5LsOHEwQaZy57EdfFC5jskBQjktp-N3JiaOX3ysJ5KaURi1ipgmg3gB9mTwy2r76q8f97Kc8_4dmsHQ2Vv8F9IDx0qPPBxjULoSHEHPlVb6rfRMlGEjW85RIw6q_9_XoF-IgU2W3UEYESHuJnaNVtO8Xoow4p_AveVPC6TWJ46EKo5IBnPNymP6d265hKF-2NXVJrGOTbVfFTTXEzlfh0UIsqamgemWGWJmlSc6a81vKnmS6aQ53oZr2fwWuPbvfs");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
-    filter: grayscale(0.18) sepia(0.22);
+    filter: grayscale(0.08) sepia(0.12);
+  }
+  .montgomery-hero-photo-1 {
+    background-image: url("/images/montgomery-1.jpg");
+    animation: hero-photo-slide 22s ease-in-out infinite;
+  }
+  .montgomery-hero-photo-2 {
+    background-image: url("/images/montgomery-3.jpg");
+    animation: hero-photo-slide 22s ease-in-out infinite;
+    animation-delay: -11s;
   }
   .hero-ring-shell {
     background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.18), rgba(0,0,0,0.18));
@@ -268,6 +274,34 @@
   .dashboard-scroll-area {
     scroll-behavior: smooth;
   }
+  /* Scrollbar styling for elements with overflow */
+  [class*="overflow-y-auto"]::-webkit-scrollbar,
+  [class*="overflow-x-auto"]::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  [class*="overflow-y-auto"]::-webkit-scrollbar-track,
+  [class*="overflow-x-auto"]::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 999px;
+  }
+  [class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
+  [class*="overflow-x-auto"]::-webkit-scrollbar-thumb {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.05)),
+      var(--scrollbar-thumb);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
+  [class*="overflow-x-auto"]::-webkit-scrollbar-thumb:hover {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08)),
+      var(--scrollbar-thumb-hover);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
 }
 
 @keyframes pulse-beat {
@@ -314,6 +348,14 @@
 @keyframes ticker-scroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+@keyframes hero-photo-slide {
+  0%   { opacity: 0; }
+  5%   { opacity: 1; }
+  45%  { opacity: 1; }
+  55%  { opacity: 0; }
+  100% { opacity: 0; }
 }
 
 @keyframes ring-float {
@@ -372,18 +414,15 @@
   html {
     scroll-behavior: smooth;
   }
-  * {
-    @apply border-border;
-  }
-  *::-webkit-scrollbar {
+  html::-webkit-scrollbar {
     width: 12px;
     height: 12px;
   }
-  *::-webkit-scrollbar-track {
+  html::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
     border-radius: 999px;
   }
-  *::-webkit-scrollbar-thumb {
+  html::-webkit-scrollbar-thumb {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.05)),
       var(--scrollbar-thumb);
@@ -391,15 +430,19 @@
     background-clip: padding-box;
     border-radius: 999px;
   }
-  *::-webkit-scrollbar-thumb:hover {
+  html::-webkit-scrollbar-thumb:hover {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.08)),
       var(--scrollbar-thumb-hover);
     border: 3px solid transparent;
     background-clip: padding-box;
   }
+  * {
+    border-color: hsl(var(--border));
+  }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
   .dark {
     --background: 30 12% 14%;           /* #1e1c19 Montgomery dark */

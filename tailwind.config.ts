@@ -1,18 +1,18 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-    darkMode: ["class"],
+	darkMode: ["class"],
     content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  safelist: [
-    "text-pulse-critical", "text-pulse-watch", "text-pulse-stable",
-    "bg-red-100", "border-red-300", "border-t-red-500", "border-l-red-500",
-    "bg-amber-100", "border-amber-300", "border-t-amber-500", "border-l-amber-500",
-    "bg-green-100", "border-green-300", "border-t-green-500", "border-l-green-500",
-  ],
+	safelist: [
+		"text-pulse-critical", "text-pulse-watch", "text-pulse-stable",
+		"bg-red-100", "border-red-300", "border-t-red-500", "border-l-red-500",
+		"bg-amber-100", "border-amber-300", "border-t-amber-500", "border-l-amber-500",
+		"bg-green-100", "border-green-300", "border-t-green-500", "border-l-green-500",
+	],
   theme: {
   	extend: {
   		fontFamily: {

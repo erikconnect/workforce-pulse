@@ -1,9 +1,9 @@
 "use client"
 
 import { useMemo, useState, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Phone, GraduationCap, CheckCircle2, MoreVertical, Trophy, Flame, Target } from "lucide-react"
-import { fetchMissionMemberProfile, fetchPulseSummary, fetchSectors } from "@/services"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Phone, GraduationCap, CheckCircle2, Target } from "lucide-react"
+import { fetchMissionMemberProfile, fetchPulseSummary, fetchSectors, submitDailyCheckIn } from "@/services"
 import { SectorStripCard } from "@/components/sectors/sector-strip-card"
 import { useWorkforceData } from "@/hooks/use-workforce-data"
 import { useJobInsights } from "@/hooks/use-job-insights"
@@ -13,8 +13,15 @@ import { CityProfile } from "@/components/dashboard/city-profile"
 import { CityScore } from "@/components/dashboard/city-score"
 import { DashboardMiniMap } from "@/components/dashboard/dashboard-mini-map"
 import { LiveScrapeCompact } from "@/components/dashboard/live-scrape"
+import { JobDataStatus } from "@/components/dashboard/job-data-status"
+import { DashboardSignalCard } from "@/components/dashboard/signal-card"
+import { JobInsightsCards } from "@/components/dashboard/job-insights-cards"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
+import { computeCompositeScore } from "@/lib/workforce-health"
+import { useUserRole } from "@/hooks/use-user-role"
+import { CitizenDashboard } from "@/components/dashboard/citizen-dashboard"
+import type { Sector } from "@/services/types"
 
 type MiniSignalDatum = {
   label: string
@@ -40,6 +47,40 @@ function formatShortDate(date: string) {
     month: "short",
     day: "numeric",
   })
+}
+
+function seriesDelta(points: TimelinePoint[]) {
+  if (points.length < 2) return 0
+  const latest = points[points.length - 1]?.value ?? 0
+  const previous = points[points.length - 2]?.value ?? 0
+  return latest - previous
+}
+
+function formatTrendValue(delta: number, noun: string) {
+  if (delta === 0) return `No change in ${noun}`
+  return `${delta > 0 ? "+" : ""}${delta} ${noun}`
+}
+
+function formatStatusLabel(status?: string) {
+  if (!status) return "Watch"
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function formatRefreshLabel(value?: string) {
+  if (!value) return "Awaiting refresh"
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value))
+}
+
+function formatSectorName(sectorId: string) {
+  return sectorId
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
 }
 
 function MiniTimelineChart({
@@ -124,8 +165,29 @@ function MiniTimelineChart({
 }
 
 export default function DashboardPage() {
+  const { isCitizen, isLoading: roleLoading } = useUserRole()
+
+  if (roleLoading) {
+    return (
+      <div className="space-y-6 pb-10">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid gap-5 lg:grid-cols-3">
+          <Skeleton className="h-64 lg:col-span-2 rounded-3xl" />
+          <Skeleton className="h-64 rounded-3xl" />
+        </div>
+      </div>
+    )
+  }
+
+  if (isCitizen) return <CitizenDashboard />
+
+  return <AdminDashboard />
+}
+
+function AdminDashboard() {
   const userName = "City Admin"
   const [greeting, setGreeting] = useState("Hello")
+  const queryClient = useQueryClient()
   
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ["pulseSummary"],
@@ -143,6 +205,12 @@ export default function DashboardPage() {
 
   const { data: workforceData } = useWorkforceData()
   const { data: jobInsights } = useJobInsights()
+  const checkInMutation = useMutation({
+    mutationFn: submitDailyCheckIn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pulseSummary"] })
+    },
+  })
 
   useEffect(() => {
     const now = new Date()
@@ -152,12 +220,71 @@ export default function DashboardPage() {
     setGreeting(greetingText)
   }, [])
 
+  const liveSectors = useMemo<Sector[]>(() => {
+    const baseline = sectors ?? []
+    const byId = new Map(baseline.map((sector) => [sector.id, sector]))
+    const sectorStats = workforceData?.sectorStats ?? []
+    if (sectorStats.length === 0) return baseline
+
+    const maxJobs = Math.max(...sectorStats.map((stat) => stat.cityOpenJobs), 1)
+    const maxDemand = Math.max(...sectorStats.map((stat) => stat.demandSignal ?? 0), 1)
+
+    return sectorStats.map((stat) => {
+      const base = byId.get(stat.sectorId)
+      const jobsRatio = stat.cityOpenJobs / maxJobs
+      const demandRatio = (stat.demandSignal ?? 0) / maxDemand
+      const pulseScore = Math.round(20 + (jobsRatio * 0.62 + demandRatio * 0.38) * 80)
+      const status = pulseScore >= 70 ? "critical" : pulseScore >= 45 ? "watch" : "stable"
+
+      return {
+        id: stat.sectorId,
+        name: base?.name ?? formatSectorName(stat.sectorId),
+        pulseScore,
+        status,
+        kpis: [
+          {
+            label: "Open roles",
+            value: stat.cityOpenJobs,
+            delta: 0,
+            status,
+          },
+          {
+            label: "Demand signal",
+            value: stat.demandSignal ?? 0,
+            delta: 0,
+            status,
+          },
+        ],
+        sparklineData:
+          base?.sparklineData ??
+          [
+            Math.max(12, Math.round(pulseScore * 0.72)),
+            Math.max(12, Math.round(pulseScore * 0.78)),
+            Math.max(12, Math.round(pulseScore * 0.84)),
+            Math.max(12, Math.round(pulseScore * 0.9)),
+            Math.max(12, Math.round(pulseScore * 0.96)),
+            pulseScore,
+          ],
+        employeeCount: base?.employeeCount ?? 0,
+        openRolesCount: stat.cityOpenJobs,
+        description: base?.description ?? `Live workforce signal for ${formatSectorName(stat.sectorId)}.`,
+      }
+    })
+  }, [sectors, workforceData?.sectorStats])
+
+  const effectiveSectors = useMemo(() => {
+    return liveSectors.length > 0 ? liveSectors : (sectors ?? [])
+  }, [liveSectors, sectors])
+
   const criticalRolesCount = useMemo(() => {
     if (jobInsights?.insights?.criticalRolesCount != null) return jobInsights.insights.criticalRolesCount
+    const criticalOpenings = effectiveSectors
+      .filter((sector) => sector.status === "critical")
+      .reduce((sum, sector) => sum + sector.openRolesCount, 0)
+    if (criticalOpenings > 0) return criticalOpenings
     const ps = workforceData?.sectorStats?.find((s) => s.sectorId === "public-safety")
-    if (ps?.cityOpenJobs != null) return ps.cityOpenJobs
-    return summary?.criticalRolesCount ?? 0
-  }, [jobInsights?.insights?.criticalRolesCount, workforceData?.sectorStats, summary?.criticalRolesCount])
+    return ps?.cityOpenJobs ?? 0
+  }, [effectiveSectors, jobInsights?.insights?.criticalRolesCount, workforceData?.sectorStats])
   const criticalRoleSignals = useMemo<TimelinePoint[]>(() => {
     const series = jobInsights?.insights?.sectorTimelines?.find((timeline) => timeline.sectorId === "public-safety")?.series ?? []
     return series.slice(-14).map((point) => ({
@@ -181,12 +308,40 @@ export default function DashboardPage() {
       }))
   }, [jobInsights?.insights?.topSkills])
 
+  const liveTrainingNeedsCount = useMemo(() => {
+    const risingSkills = (jobInsights?.insights?.topSkills ?? []).filter((skill) => skill.growthSignal === "rising")
+    if (risingSkills.length > 0) return risingSkills.length
+    const allSkills = jobInsights?.insights?.topSkills?.length ?? 0
+    return allSkills > 0 ? Math.min(allSkills, 8) : 0
+  }, [jobInsights?.insights?.topSkills])
+
   const sectorsOrdered = useMemo(() => {
-    if (!sectors) return []
-    const publicSafety = sectors.find((s) => s.id === "public-safety")
-    const rest = sectors.filter((s) => s.id !== "public-safety")
-    return publicSafety ? [publicSafety, ...rest] : sectors
-  }, [sectors])
+    if (!effectiveSectors || effectiveSectors.length === 0) return []
+    const publicSafety = effectiveSectors.find((s) => s.id === "public-safety")
+    const rest = effectiveSectors.filter((s) => s.id !== "public-safety")
+    return publicSafety ? [publicSafety, ...rest] : effectiveSectors
+  }, [effectiveSectors])
+  const topPressureSector = useMemo(() => {
+    if (sectorsOrdered.length === 0) return null
+    const priority: Record<string, number> = { critical: 0, watch: 1, stable: 2 }
+    return [...sectorsOrdered].sort((left, right) => {
+      const statusDelta = (priority[left.status] ?? 2) - (priority[right.status] ?? 2)
+      if (statusDelta !== 0) return statusDelta
+      return right.openRolesCount - left.openRolesCount
+    })[0] ?? null
+  }, [sectorsOrdered])
+  const strongestSector = useMemo(() => {
+    if (!effectiveSectors || effectiveSectors.length === 0) return null
+    return [...effectiveSectors].sort((left, right) => right.pulseScore - left.pulseScore)[0] ?? null
+  }, [effectiveSectors])
+  const weakestSector = useMemo(() => {
+    if (!effectiveSectors || effectiveSectors.length === 0) return null
+    return [...effectiveSectors].sort((left, right) => left.pulseScore - right.pulseScore)[0] ?? null
+  }, [effectiveSectors])
+  const compositeScore = useMemo(() => {
+    if (!effectiveSectors || effectiveSectors.length === 0) return null
+    return computeCompositeScore(effectiveSectors)
+  }, [effectiveSectors])
 
   const topSectors = useMemo(() => {
     const priority: Record<string, number> = { critical: 0, watch: 1, stable: 2 }
@@ -195,10 +350,10 @@ export default function DashboardPage() {
       .slice(0, 4)
   }, [sectorsOrdered])
   const statusMix = useMemo(() => {
-    const total = sectors?.length ?? 0
-    const stable = sectors?.filter((sector) => sector.status === "stable").length ?? 0
-    const watch = sectors?.filter((sector) => sector.status === "watch").length ?? 0
-    const critical = sectors?.filter((sector) => sector.status === "critical").length ?? 0
+    const total = effectiveSectors?.length ?? 0
+    const stable = effectiveSectors?.filter((sector) => sector.status === "stable").length ?? 0
+    const watch = effectiveSectors?.filter((sector) => sector.status === "watch").length ?? 0
+    const critical = effectiveSectors?.filter((sector) => sector.status === "critical").length ?? 0
     const stabilityIndex = total === 0 ? 0 : Math.round((((stable * 1 + watch * 0.62 + critical * 0.28) / total) * 100) * 10) / 10
 
     return {
@@ -211,7 +366,7 @@ export default function DashboardPage() {
       watchPct: total === 0 ? 0 : Math.round((watch / total) * 100),
       criticalPct: total === 0 ? 0 : Math.round((critical / total) * 100),
     }
-  }, [sectors])
+  }, [effectiveSectors])
   const checkInPreview = useMemo(() => {
     const streak = summary?.checkInStreak ?? 0
     const completedToday = summary?.checkInCompleted ?? false
@@ -219,15 +374,41 @@ export default function DashboardPage() {
     const activeCount = completedToday ? Math.min(5, Math.max(1, streak)) : Math.min(4, Math.max(0, streak))
     return Array.from({ length: 5 }, (_, index) => index < activeCount)
   }, [summary?.checkInCompleted, summary?.checkInStreak])
+  const criticalRolesDelta = useMemo(() => seriesDelta(criticalRoleSignals), [criticalRoleSignals])
+  const trainingNeedsDelta = useMemo(() => seriesDelta(trainingNeedSignals), [trainingNeedSignals])
+  const trainingFocusChips = useMemo(() => {
+    const prominentSkills = leadingTrainingSkills.map((skill) => `${skill.label} · ${skill.value}`)
+    if (prominentSkills.length > 0) return prominentSkills
+    return (summary?.fastestRisingSkills ?? []).slice(0, 3)
+  }, [leadingTrainingSkills, summary?.fastestRisingSkills])
+  const latestTrainingMentions = trainingNeedSignals[trainingNeedSignals.length - 1]?.value ?? 0
+  const refreshLabel = formatRefreshLabel(jobInsights?.insights?.lastUpdated)
+  const nextStreakMilestone = useMemo(() => {
+    const streak = summary?.checkInStreak ?? 0
+    return Math.max(7, Math.ceil((streak + 1) / 7) * 7)
+  }, [summary?.checkInStreak])
+  const streakProgress = useMemo(() => {
+    const streak = summary?.checkInStreak ?? 0
+    return Math.min(100, Math.round((streak / nextStreakMilestone) * 100))
+  }, [nextStreakMilestone, summary?.checkInStreak])
 
   const criticalRolesCaption =
     criticalRolesCount > 0
       ? "Dispatch, patrol and emergency response roles are driving current pressure."
       : "No urgent public safety hiring pressure detected right now."
   const trainingNeedsCaption =
-    (summary?.trainingNeedsCount ?? 0) > 0
+    liveTrainingNeedsCount > 0
       ? "Training gaps are concentrated in certifications, field readiness and onboarding."
       : "Training demand is stable across the current hiring mix."
+
+  const liveSystemStatus: "critical" | "watch" | "stable" =
+    (compositeScore?.compositeScore ?? 0) >= 70
+      ? "stable"
+      : (compositeScore?.compositeScore ?? 0) >= 45
+        ? "watch"
+        : "critical"
+
+  const liveMetricsLoading = !workforceData && !jobInsights && effectiveSectors.length === 0
 
   return (
     <div className="space-y-6">
@@ -240,212 +421,234 @@ export default function DashboardPage() {
         <CityProfile />
       </div>
 
+      {/* Job Insights & Recommendations */}
+      <div className="opacity-0 animate-fade-in-up animate-stagger-1">
+        <JobInsightsCards />
+      </div>
+
       <div data-tour="kpi-cards" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className={cn("glass-panel rounded-3xl p-6 tile-critical opacity-0 animate-fade-in-up animate-stagger-1 transition-all relative overflow-hidden bg-gradient-to-br from-red-50/50 to-pink-100/30 dark:from-red-900/20 dark:to-pink-900/10")} style={{ animationFillMode: "forwards" }}>
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-semibold text-sm">Critical Roles</h3>
-            <button className="text-muted-foreground hover:text-foreground" aria-label="More options"><MoreVertical className="h-5 w-5" /></button>
+        <DashboardSignalCard
+          tone="critical"
+          eyebrow="Priority coverage"
+          title="Critical Roles"
+          status={criticalRolesDelta > 0 ? "Escalating" : criticalRolesDelta < 0 ? "Cooling" : "Holding"}
+          icon={Phone}
+          value={liveMetricsLoading ? <Skeleton className="h-9 w-16" /> : <AnimatedCounter value={criticalRolesCount} />}
+          suffix="roles"
+          description={criticalRolesCaption}
+          stats={[
+            {
+              label: "Hot sector",
+              value: topPressureSector?.name ?? "Public Safety",
+              tone: topPressureSector?.status === "stable" ? "stable" : topPressureSector?.status === "critical" ? "critical" : "watch",
+            },
+            {
+              label: "Open roles",
+              value: (topPressureSector?.openRolesCount ?? criticalRolesCount).toLocaleString("en-US"),
+            },
+            {
+              label: "14-day shift",
+              value: formatTrendValue(criticalRolesDelta, "roles"),
+              tone: criticalRolesDelta > 0 ? "critical" : criticalRolesDelta < 0 ? "stable" : "neutral",
+            },
+          ]}
+          action={{ label: "Review hiring gaps", href: "/jobs" }}
+          className="opacity-0 animate-fade-in-up animate-stagger-1 transition-all"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              <span>Public safety posting pressure</span>
+              <span>Last 14 days</span>
+            </div>
+            <MiniTimelineChart
+              points={criticalRoleSignals}
+              tone="critical"
+              emptyLabel="Waiting for public safety posting history."
+              footerLabel="Bright Data, JobAps, and federal feeds"
+            />
           </div>
-          <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-6 text-red-500 dark:text-red-400">
-            <Phone className="h-5 w-5" />
-          </div>
-          {(summaryLoading && !workforceData && !jobInsights) ? (
-            <Skeleton className="h-9 w-16 relative" />
-          ) : (
-            <>
-              <div className="mb-2 flex items-end gap-2">
-                <span className="text-2xl font-bold"><AnimatedCounter value={criticalRolesCount} /></span>
-                <span className="text-sm font-medium mb-1">critical Roles</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-4 leading-tight">{criticalRolesCaption}</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                  <span>Public safety postings trend</span>
-                  <span>Last 14 days</span>
-                </div>
-                <MiniTimelineChart
-                  points={criticalRoleSignals}
-                  tone="critical"
-                  emptyLabel="Waiting for public safety posting history."
-                  footerLabel="Bright Data, JobAps, and federal feeds"
-                />
-              </div>
-            </>
-          )}
-        </div>
+        </DashboardSignalCard>
 
-        <div className={cn("glass-panel rounded-3xl p-6 opacity-0 animate-fade-in-up animate-stagger-2 transition-all relative overflow-hidden")} style={{ animationFillMode: "forwards" }}>
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-semibold text-sm">Training Needs</h3>
-            <button className="text-muted-foreground hover:text-foreground" aria-label="More options"><MoreVertical className="h-5 w-5" /></button>
+        <DashboardSignalCard
+          tone="watch"
+          eyebrow="Capability watch"
+          title="Training Needs"
+          status={trainingNeedsDelta > 0 ? "Demand rising" : trainingNeedsDelta < 0 ? "Cooling" : "Steady demand"}
+          icon={GraduationCap}
+          value={liveMetricsLoading ? <Skeleton className="h-9 w-20" /> : <><AnimatedCounter value={liveTrainingNeedsCount} />+</>}
+          description={trainingNeedsCaption}
+          stats={[
+            {
+              label: "Lead skill",
+              value: leadingTrainingSkills[0]?.label ?? summary?.fastestRisingSkills?.[0] ?? "Awaiting data",
+              tone: "watch",
+            },
+            {
+              label: "Latest mentions",
+              value: latestTrainingMentions.toLocaleString("en-US"),
+            },
+            {
+              label: "Updated",
+              value: refreshLabel,
+            },
+          ]}
+          chips={trainingFocusChips}
+          action={{ label: "Open skill planning", href: "/skills" }}
+          className="opacity-0 animate-fade-in-up animate-stagger-2 transition-all"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              <span>Skill demand trend</span>
+              <span>Last 14 days</span>
+            </div>
+            <MiniTimelineChart
+              points={trainingNeedSignals}
+              tone="watch"
+              emptyLabel="Run a live job refresh to populate skill demand."
+              footerLabel="Daily extracted skill mentions from live postings"
+            />
           </div>
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-6 text-muted-foreground">
-            <GraduationCap className="h-5 w-5" />
-          </div>
-          {summaryLoading ? (
-            <Skeleton className="h-9 w-16 relative" />
-          ) : (
-            <>
-              <div className="mb-2 flex items-end gap-2">
-                <span className="text-2xl font-bold"><AnimatedCounter value={summary?.trainingNeedsCount ?? 0} />+</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-4 leading-tight">{trainingNeedsCaption}</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                  <span>Skill demand trend</span>
-                  <span>Last 14 days</span>
-                </div>
-                <MiniTimelineChart
-                  points={trainingNeedSignals}
-                  tone="watch"
-                  emptyLabel="Run a live job refresh to populate skill demand."
-                  footerLabel="Daily extracted skill mentions from live postings"
-                />
-                {leadingTrainingSkills.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {leadingTrainingSkills.map((skill) => (
-                      <span
-                        key={skill.label}
-                        className="rounded-full bg-amber-100/80 px-2 py-1 text-[10px] font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                      >
-                        {skill.label} · {skill.value}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        </DashboardSignalCard>
 
-        <div className={cn("glass-panel rounded-3xl p-6 opacity-0 animate-fade-in-up animate-stagger-2 transition-all relative overflow-hidden bg-gradient-to-br from-green-50/50 via-yellow-50/30 to-red-50/50 dark:from-green-900/10 dark:via-yellow-900/10 dark:to-red-900/10")} style={{ animationFillMode: "forwards" }}>
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-sm">Overall Status</h3>
-            <button className="text-muted-foreground hover:text-foreground" aria-label="More options"><MoreVertical className="h-5 w-5" /></button>
+        <DashboardSignalCard
+          tone={liveSystemStatus === "critical" ? "critical" : liveSystemStatus === "stable" ? "stable" : "watch"}
+          eyebrow="System balance"
+          title="Overall Status"
+          status={formatStatusLabel(liveSystemStatus)}
+          icon={Target}
+          value={liveMetricsLoading ? <Skeleton className="h-9 w-20" /> : `${statusMix.stabilityIndex}%`}
+          suffix="stability"
+          description="Sector stability mix across active workforce systems, weighted by live pulse health." 
+          stats={[
+            {
+              label: "Avg pulse",
+              value: compositeScore ? compositeScore.avgPulse.toFixed(1) : "--",
+              tone: liveSystemStatus === "critical" ? "critical" : liveSystemStatus === "stable" ? "stable" : "watch",
+            },
+            {
+              label: "Strongest",
+              value: strongestSector?.name ?? "No sector data",
+              tone: "stable",
+            },
+            {
+              label: "Needs focus",
+              value: weakestSector?.name ?? "No sector data",
+              tone: weakestSector?.status === "critical" ? "critical" : weakestSector?.status === "stable" ? "stable" : "watch",
+            },
+          ]}
+          action={{ label: "Inspect sector mix", href: "/sectors" }}
+          className="opacity-0 animate-fade-in-up animate-stagger-2 transition-all"
+        >
+          <div className="space-y-3 rounded-2xl border border-white/25 bg-white/35 p-3 dark:border-white/10 dark:bg-black/15">
+            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              {statusMix.total} sectors tracked
+            </div>
+            <div className="space-y-2.5">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-medium">
+                  <span className="text-emerald-700 dark:text-emerald-300">Stable</span>
+                  <span>{statusMix.stablePct}%</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-500" style={{ width: `${statusMix.stablePct}%` }} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-medium">
+                  <span className="text-amber-700 dark:text-amber-300">Watch</span>
+                  <span>{statusMix.watchPct}%</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400" style={{ width: `${statusMix.watchPct}%` }} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-medium">
+                  <span className="text-red-700 dark:text-red-300">Critical</span>
+                  <span>{statusMix.criticalPct}%</span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-red-300 to-rose-500" style={{ width: `${statusMix.criticalPct}%` }} />
+                </div>
+              </div>
+            </div>
           </div>
-          {summaryLoading ? (
-            <Skeleton className="h-9 w-24" />
-          ) : (
-            <>
-              <div className="mb-1">
-                <span className="text-3xl font-bold">{statusMix.stabilityIndex}%</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground mb-4 leading-tight">
-                Sector stability mix across active workforce systems.
-              </p>
-              <div className="space-y-3 rounded-2xl bg-white/35 p-3 dark:bg-black/15">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-medium">
-                    <span className="text-green-700 dark:text-green-300">Stable</span>
-                    <span>{statusMix.stablePct}%</span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-green-300 to-green-500" style={{ width: `${statusMix.stablePct}%` }} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-medium">
-                    <span className="text-amber-700 dark:text-amber-300">Watch</span>
-                    <span>{statusMix.watchPct}%</span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-orange-400" style={{ width: `${statusMix.watchPct}%` }} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] font-medium">
-                    <span className="text-red-700 dark:text-red-300">Critical</span>
-                    <span>{statusMix.criticalPct}%</span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-red-300 to-rose-500" style={{ width: `${statusMix.criticalPct}%` }} />
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        </DashboardSignalCard>
 
-        <div className="glass-panel rounded-3xl p-6 opacity-0 animate-fade-in-up animate-stagger-3 transition-all relative overflow-hidden" style={{ animationFillMode: "forwards" }}>
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="font-semibold text-sm">Check-In Streak</h3>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-6 text-muted-foreground">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          {summaryLoading ? (
-            <Skeleton className="h-9 w-16" />
-          ) : (
-            <>
-              <p className="text-[11px] text-muted-foreground mb-4 leading-tight">
-                Daily check-ins keep the pulse current, improve trend accuracy, and preserve your streak.
-              </p>
-              {missionMemberProfile && (
-                <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/10 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">Mission progress</p>
-                      <p className="mt-1 text-sm font-semibold text-primary">{missionMemberProfile.points} pts</p>
-                    </div>
-                    <div className="rounded-xl bg-white/60 px-2.5 py-1.5 text-right dark:bg-white/10">
-                      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Level</p>
-                      <p className="text-sm font-semibold">{missionMemberProfile.level}</p>
-                    </div>
+        <DashboardSignalCard
+          tone={summary?.checkInCompleted ? "stable" : "watch"}
+          eyebrow="Daily workflow"
+          title="Check-In Streak"
+          status={summary?.checkInCompleted ? "Checked in today" : "Action needed"}
+          icon={CheckCircle2}
+          value={summaryLoading ? <Skeleton className="h-9 w-16" /> : <AnimatedCounter value={summary?.checkInStreak ?? 0} />}
+          suffix="days"
+          description={
+            summary?.checkInCompleted
+              ? "Today’s pulse is locked in. Keep the streak going tomorrow to preserve trend continuity."
+              : "Daily check-ins keep the pulse current, improve trend accuracy, and preserve your streak."
+          }
+          stats={[
+            {
+              label: "Level",
+              value: missionMemberProfile ? `Lv. ${missionMemberProfile.level}` : "--",
+            },
+            {
+              label: "Points",
+              value: missionMemberProfile ? missionMemberProfile.points.toLocaleString("en-US") : "--",
+              tone: "stable",
+            },
+            {
+              label: "Active missions",
+              value: missionMemberProfile?.activeMissionCount ?? 0,
+            },
+          ]}
+          action={{
+            label: summary?.checkInCompleted ? "Checked in today" : "Submit daily check-in",
+            onClick: () => checkInMutation.mutate(),
+            disabled: summaryLoading || checkInMutation.isPending || summary?.checkInCompleted,
+            loading: checkInMutation.isPending,
+          }}
+          className="opacity-0 animate-fade-in-up animate-stagger-3 transition-all"
+        >
+          <div className="rounded-2xl border border-white/25 bg-white/35 p-3 dark:border-white/10 dark:bg-black/15">
+            <div className="flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              <span>Next milestone</span>
+              <span>{summary?.checkInStreak ?? 0}/{nextStreakMilestone} days</span>
+            </div>
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-primary/70 via-primary to-amber-400" style={{ width: `${streakProgress}%` }} />
+            </div>
+            <div className="mt-4 flex justify-between items-end">
+              {[1, 2, 3, 4, 5].map((day) => {
+                const filled = checkInPreview[day - 1]
+                const isToday = day === 5
+                return (
+                  <div key={day} className="flex flex-col items-center gap-2">
+                    <div
+                      className={cn(
+                        "h-10 w-5 rounded-full transition-all",
+                        filled
+                          ? "bg-primary/75 shadow-[0_6px_14px_rgba(209,154,71,0.24)]"
+                          : "bg-black/5 shadow-inner dark:bg-black/40",
+                        isToday && !filled && "border border-dashed border-primary/45 bg-transparent",
+                      )}
+                    />
+                    <span className={cn("text-[10px] text-muted-foreground", isToday && "font-semibold text-primary")}>{day}</span>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-[10px]">
-                    <div className="rounded-xl bg-white/55 px-2.5 py-2 dark:bg-white/10">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Trophy className="h-3 w-3 text-primary" />
-                        Points
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-foreground">{missionMemberProfile.points}</p>
-                    </div>
-                    <div className="rounded-xl bg-white/55 px-2.5 py-2 dark:bg-white/10">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Flame className="h-3 w-3 text-amber-500" />
-                        Streak
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-foreground">{missionMemberProfile.streak}</p>
-                    </div>
-                    <div className="rounded-xl bg-white/55 px-2.5 py-2 dark:bg-white/10">
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Target className="h-3 w-3 text-sky-500" />
-                        Missions
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-foreground">{missionMemberProfile.activeMissionCount}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-                    Check-ins and mission execution now work together: keep the pulse updated daily while earning points by moving workforce missions forward.
-                  </p>
-                </div>
-              )}
-              <div className="flex justify-between items-end mt-4">
-                {[1, 2, 3, 4, 5].map((d) => {
-                  const filled = checkInPreview[d - 1]
-                  const isToday = d === 5
-                  return (
-                    <div key={d} className="flex flex-col items-center gap-2">
-                      <div
-                        className={cn(
-                          "w-5 h-10 rounded-full transition-all",
-                          filled
-                            ? "bg-primary/75 shadow-[0_6px_14px_rgba(209,154,71,0.24)]"
-                            : "bg-black/5 dark:bg-black/40 shadow-inner",
-                          isToday && !filled && "border border-dashed border-primary/45 bg-transparent"
-                        )}
-                      />
-                      <span className={cn("text-[10px] text-muted-foreground", isToday && "text-primary font-semibold")}>{d}</span>
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="mt-4 text-[10px] leading-relaxed text-muted-foreground">
-                One check-in per calendar day. Missing a day breaks the run, and past or future dates cannot be submitted.
+                )
+              })}
+            </div>
+            <p className="mt-4 text-[10px] leading-relaxed text-muted-foreground">
+              One check-in per calendar day. Missing a day breaks the run, and past or future dates cannot be submitted.
+            </p>
+            {checkInMutation.isError ? (
+              <p className="mt-3 rounded-xl border border-red-200/70 bg-red-50/85 px-3 py-2 text-[11px] text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                {checkInMutation.error instanceof Error ? checkInMutation.error.message : "Check-in could not be completed."}
               </p>
-            </>
-          )}
-        </div>
+            ) : null}
+          </div>
+        </DashboardSignalCard>
       </div>
 
       <div className="mb-8 opacity-0 animate-fade-in-up animate-stagger-3" style={{ animationFillMode: "forwards" }}>
@@ -453,10 +656,10 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1.55fr_0.9fr]">
             <DashboardMiniMap embedded />
             <div className="px-1 py-1 lg:h-[400px]">
-              <CityScore embedded />
+              <CityScore embedded sectorsOverride={effectiveSectors} />
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-8 lg:mt-10">
             <LiveScrapeCompact />
           </div>
         </div>
@@ -472,8 +675,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="order-1 lg:order-2 lg:min-h-[404px]">
+        <div className="order-1 lg:order-2 lg:min-h-[404px] min-w-0 space-y-4">
           <QuickActions />
+          <JobDataStatus />
         </div>
       </div>
     </div>

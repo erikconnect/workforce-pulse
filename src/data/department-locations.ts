@@ -8,6 +8,13 @@ export interface DepartmentLocation {
   address: string
 }
 
+const DEFAULT_LOCATION: DepartmentLocation = {
+  department: "City Hall",
+  lat: 32.3779,
+  lng: -86.3064,
+  address: "103 N Perry St",
+}
+
 export const DEPARTMENT_LOCATIONS: DepartmentLocation[] = [
   { department: "Police", lat: 32.3773, lng: -86.3091, address: "320 N Ripley St" },
   { department: "Fire", lat: 32.3780, lng: -86.3038, address: "953 S Perry St" },
@@ -36,5 +43,31 @@ export function findDepartmentLocation(dept: string): { lat: number; lng: number
   )
   return match
     ? { lat: match.lat, lng: match.lng }
-    : { lat: 32.3779, lng: -86.3064 } // default: City Hall
+    : { lat: DEFAULT_LOCATION.lat, lng: DEFAULT_LOCATION.lng } // default: City Hall
+}
+
+export function resolveDepartmentLocation(dept: string) {
+  const normalized = dept.trim().toLowerCase()
+  const match = DEPARTMENT_LOCATIONS.find((d) => {
+    const key = d.department.toLowerCase()
+    return normalized.includes(key) || key.includes(normalized)
+  })
+
+  if (match) {
+    return {
+      lat: match.lat,
+      lng: match.lng,
+      address: match.address,
+      matched: true,
+      department: match.department,
+    }
+  }
+
+  return {
+    lat: DEFAULT_LOCATION.lat,
+    lng: DEFAULT_LOCATION.lng,
+    address: DEFAULT_LOCATION.address,
+    matched: false,
+    department: DEFAULT_LOCATION.department,
+  }
 }

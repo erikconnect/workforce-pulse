@@ -5,8 +5,9 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { fetchWorkforceData } from "@/services/api/workforce-data"
 import { MontgomeryFact } from "@/components/dashboard/montgomery-fact"
+import { useTotalJobs } from "@/hooks/use-total-jobs"
 
-const CIRCLE_METRICS = [
+const ALL_METRICS = [
   { key: "911", label: "Calls", labelFull: "911 Calls", valueKey: "arcgis911CallCount" as const, stroke: "#fca5a5", maxValue: 5000, glowClass: "hero-ring-glow-red" },
   { key: "permits", label: "Permits", labelFull: "Permits", valueKey: "arcgisPermitCount" as const, stroke: "#fcd34d", maxValue: 200, glowClass: "hero-ring-glow-amber" },
   { key: "jobs", label: "Jobs", labelFull: "Open Jobs", valueKey: "cityJobsTotal" as const, stroke: "#86efac", maxValue: 5000, glowClass: "hero-ring-glow-green" },
@@ -14,15 +15,23 @@ const CIRCLE_METRICS = [
 
 const CIRCUMFERENCE = 251.2
 
-export function CityProfile() {
+interface CityProfileProps {
+  variant?: "admin" | "citizen"
+}
+
+export function CityProfile({ variant = "admin" }: CityProfileProps) {
   const { data, isLoading } = useQuery({
     queryKey: ["workforceData"],
     queryFn: fetchWorkforceData,
     staleTime: 3600_000,
   })
+  const { totalJobs } = useTotalJobs()
 
-  const metrics = CIRCLE_METRICS.map((m) => {
-    const value = data?.[m.valueKey] ?? 0
+  const metricsConfig = ALL_METRICS
+
+  const metrics = metricsConfig.map((m) => {
+    // Use centralized total jobs for the jobs metric
+    const value = m.key === "jobs" && totalJobs > 0 ? totalJobs : (data?.[m.valueKey] ?? 0)
     // Calculate dynamic dashOffset based on actual value
     // Formula: offset = circumference - (value / maxValue) * circumference
     const percentage = Math.min(value / m.maxValue, 1) // Cap at 100%
@@ -47,7 +56,8 @@ export function CityProfile() {
   return (
     <div className="glass-card-strong overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 shadow-lg">
       <div className="relative h-64 overflow-hidden rounded-3xl">
-        <div className="absolute inset-0 montgomery-hero-photo z-0 scale-[1.02]" aria-hidden />
+        <div className="absolute inset-0 montgomery-hero-photo montgomery-hero-photo-1 z-0 scale-[1.02]" aria-hidden />
+        <div className="absolute inset-0 montgomery-hero-photo montgomery-hero-photo-2 z-0 scale-[1.02]" aria-hidden />
         <div
           className="absolute inset-0 bg-gradient-to-r from-[#6b645c] to-[#4a4640] mix-blend-multiply opacity-80 dark:opacity-90 z-10"
           aria-hidden
@@ -63,10 +73,10 @@ export function CityProfile() {
             </h2>
             <MontgomeryFact compact className="mb-5 max-w-[24rem]" />
             <Link
-              href="/map"
+              href={variant === "citizen" ? "/jobs" : "/map"}
               className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/30 px-5 py-2 rounded-xl text-sm text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)] hover:bg-white/30 transition-colors"
             >
-              Montgomeryinfo
+              {variant === "citizen" ? "Browse Openings" : "Montgomeryinfo"}
               <ChevronRight className="h-4 w-4" />
             </Link>
           </div>

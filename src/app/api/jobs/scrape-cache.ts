@@ -59,18 +59,17 @@ export async function triggerBackgroundScrape(): Promise<void> {
   }
 
   const isFirstRun = cache.lastScrapeAt === 0;
-  console.log(`[Scrape Cache] Starting ${isFirstRun ? "INITIAL" : "background"} scrape (Indeed + LinkedIn + Glassdoor enabled)`);
+  const brightDataConfigured = !!process.env.BRIGHT_DATA_BROWSER_WSS;
+  console.log(`[Scrape Cache] Starting ${isFirstRun ? "INITIAL" : "background"} scrape (Bright Data: ${brightDataConfigured ? "enabled" : "not configured"})`);
   
   cache.isScraping = true;
   cache.scrapeStartedAt = Date.now();
 
   const scrapePromise = (async () => {
     try {
-      const result = await aggregateJobs({
-        includeIndeed: true,
-        includeLinkedIn: true,
-        includeGlassdoor: true,
-      });
+      // Let aggregateJobs() check BRIGHT_DATA_BROWSER_WSS itself;
+      // don't force scraping when the env var isn't set.
+      const result = await aggregateJobs();
 
       cache.lastScrapeAt = Date.now();
       cache.totalResults = result.totalStored;

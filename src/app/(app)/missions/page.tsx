@@ -48,6 +48,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { useUserRole } from "@/hooks/use-user-role"
 import type { CreateMissionPayload, Mission, MissionMemberProfile, PulseStatus } from "@/services/types"
 
 type StatusFilter = "all" | "active" | "completed" | "paused"
@@ -534,6 +535,7 @@ function CreateMissionDialog({ open, onClose }: { open: boolean; onClose: () => 
 export default function MissionsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [createOpen, setCreateOpen] = useState(false)
+  const { isAdmin } = useUserRole()
 
   const { data: missions, isLoading } = useQuery({
     queryKey: ["missions"],
@@ -609,10 +611,12 @@ export default function MissionsPage() {
                 </Badge>
               </div>
             </div>
-            <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Launch Mission
-            </Button>
+            {isAdmin && (
+              <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Launch Mission
+              </Button>
+            )}
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

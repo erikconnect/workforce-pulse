@@ -106,14 +106,17 @@ export async function fetchJobInsights(): Promise<{
     
     // Individual source logs
     Object.entries(data.sources).forEach(([, source]) => {
-      const color = source.count > 0 ? "#28a745" : "#dc3545";
-      const icon = source.count > 0 ? "✅" : "❌";
+      const isDisabled = source.errors?.some((e) =>
+        e === "Scraping disabled" || e.includes("not configured")
+      );
+      const color = source.count > 0 ? "#28a745" : isDisabled ? "#6c757d" : "#dc3545";
+      const icon = source.count > 0 ? "✅" : isDisabled ? "⚙️" : "❌";
       console.log(
         `%c${icon} ${source.source}: ${source.count} jobs from ${source.url}`,
         `color: ${color};`
       );
       
-      if (source.errors?.length > 0) {
+      if (source.errors?.length > 0 && !isDisabled) {
         console.warn(`   Errors: ${source.errors.join(", ")}`);
       }
     });

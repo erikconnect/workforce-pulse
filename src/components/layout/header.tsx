@@ -34,7 +34,7 @@ export function Header({ onMenuClick, onStartTour }: HeaderProps) {
   const { data: session } = useSession()
   const queryClient = useQueryClient()
 
-  const userName = session?.user?.name ?? "City Admin"
+  const userName = session?.user?.name ?? "User"
   const userCity = (session?.user as { city?: string })?.city ?? "Montgomery, AL"
 
   const { data: alerts } = useQuery({

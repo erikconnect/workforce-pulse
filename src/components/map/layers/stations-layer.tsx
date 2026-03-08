@@ -30,8 +30,33 @@ function guessType(props: Record<string, unknown>): string {
 
 interface Feature {
   type: "Feature"
-  geometry: { type: "Point"; coordinates: [number, number] }
+  geometry: { type: string; coordinates: unknown }
   properties: Record<string, unknown>
+}
+
+function toLatLng(feature: Feature): [number, number] | null {
+  const geometry = feature.geometry
+  if (!geometry) return null
+
+  if (geometry.type === "Point" && Array.isArray(geometry.coordinates)) {
+    const [lng, lat] = geometry.coordinates as [number, number]
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng]
+  }
+
+  if (geometry.type === "MultiPoint" && Array.isArray(geometry.coordinates)) {
+    const first = geometry.coordinates[0]
+    if (Array.isArray(first) && first.length >= 2) {
+      const [lng, lat] = first as [number, number]
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng]
+    }
+  }
+
+  const props = feature.properties ?? {}
+  const lngCandidate = Number(props.LON ?? props.LONGITUDE ?? props.longitude ?? props.lng ?? props.X)
+  const latCandidate = Number(props.LAT ?? props.LATITUDE ?? props.latitude ?? props.lat ?? props.Y)
+  if (Number.isFinite(latCandidate) && Number.isFinite(lngCandidate)) return [latCandidate, lngCandidate]
+
+  return null
 }
 
 export function StationsLayer() {
@@ -52,19 +77,19 @@ export function StationsLayer() {
   return (
     <>
       {data.features.map((f, i) => {
-        if (f.geometry?.type !== "Point") return null
-        const [lng, lat] = f.geometry.coordinates
+        const center = toLatLng(f)
+        if (!center) return null
         const type = guessType(f.properties)
         return (
-          <Marker key={i} position={[lat, lng]} icon={ICONS[type]}>
+          <Marker key={i} position={center} icon={ICONS[type]}>
             <Popup>
               <div className="text-xs space-y-1">
                 <p className="font-semibold">
                   {String(f.properties.Name ?? f.properties.name ?? f.properties.FACILITY_NAME ?? "Station")}
                 </p>
                 <p className="capitalize text-muted-foreground">{type}</p>
-                {f.properties.Address ? (
-                  <p>{String(f.properties.Address)}</p>
+                {f.properties.Address ?? f.properties.address ?? f.properties.ADDRESS ? (
+                  <p>{String(f.properties.Address ?? f.properties.address ?? f.properties.ADDRESS)}</p>
                 ) : null}
               </div>
             </Popup>

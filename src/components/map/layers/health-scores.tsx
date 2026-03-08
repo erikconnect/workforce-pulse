@@ -10,7 +10,7 @@ import { heatmapColor, pointInPolygon, computeCompositeScore } from "@/lib/workf
 
 interface FeatureCollection {
   features: Array<{
-    geometry: { type: string; coordinates: [number, number] }
+    geometry: { type: string; coordinates: unknown }
     properties: Record<string, unknown>
   }>
 }
@@ -47,8 +47,14 @@ function centroid(polygon: Array<[number, number]>): [number, number] {
 export function HealthScoresLayer() {
   const { data: callsData } = useQuery<FeatureCollection>({
     queryKey: ["arcgis", "911-calls"],
-    queryFn: () => fetch("/api/arcgis/911-calls").then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/arcgis/911-calls")
+      const json = await r.json()
+      if (!r.ok) throw new Error(json.error ?? `HTTP ${r.status}`)
+      return json
+    },
     staleTime: 3600_000,
+    retry: 1,
   })
   const { data: permitsData } = useQuery<FeatureCollection>({
     queryKey: ["arcgis", "permits"],
@@ -63,8 +69,14 @@ export function HealthScoresLayer() {
   })
   const { data: eduData } = useQuery<FeatureCollection>({
     queryKey: ["arcgis", "education"],
-    queryFn: () => fetch("/api/arcgis/education").then((r) => r.json()),
+    queryFn: async () => {
+      const r = await fetch("/api/arcgis/education")
+      const json = await r.json()
+      if (!r.ok) throw new Error(json.error ?? `HTTP ${r.status}`)
+      return json
+    },
     staleTime: 3600_000,
+    retry: 1,
   })
   const { data: sectors } = useQuery({
     queryKey: ["sectors"],
@@ -78,11 +90,33 @@ export function HealthScoresLayer() {
 
   const toPoints = (fc: FeatureCollection | undefined): [number, number][] =>
     (fc?.features ?? [])
-      .filter((f) => f.geometry?.type === "Point")
-      .map((f) => {
-        const [lng, lat] = f.geometry.coordinates
-        return [lat, lng] as [number, number]
+      .map((feature) => {
+        const geometry = feature.geometry
+        if (!geometry) return null
+
+        if (geometry.type === "Point" && Array.isArray(geometry.coordinates)) {
+          const [lng, lat] = geometry.coordinates as [number, number]
+          if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng] as [number, number]
+        }
+
+        if (geometry.type === "MultiPoint" && Array.isArray(geometry.coordinates)) {
+          const first = geometry.coordinates[0]
+          if (Array.isArray(first) && first.length >= 2) {
+            const [lng, lat] = first as [number, number]
+            if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng] as [number, number]
+          }
+        }
+
+        const props = feature.properties ?? {}
+        const lngCandidate = Number(props.LON ?? props.LONGITUDE ?? props.longitude ?? props.lng ?? props.X)
+        const latCandidate = Number(props.LAT ?? props.LATITUDE ?? props.latitude ?? props.lat ?? props.Y)
+        if (Number.isFinite(latCandidate) && Number.isFinite(lngCandidate)) {
+          return [latCandidate, lngCandidate] as [number, number]
+        }
+
+        return null
       })
+      .filter((point): point is [number, number] => point !== null)
 
   const callPts = toPoints(callsData)
   const permitPts = toPoints(permitsData)

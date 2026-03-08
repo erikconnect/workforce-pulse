@@ -4,16 +4,41 @@ import { useQuery } from "@tanstack/react-query"
 import { fetchSectors } from "@/services"
 import { computeCompositeScore } from "@/lib/workforce-health"
 import { cn } from "@/lib/utils"
+import type { Sector } from "@/services/types"
 
-export function CityScore({ embedded = false }: { embedded?: boolean }) {
-  const { data: sectors } = useQuery({
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function statusFromScore(score: number) {
+  if (score < 40) return { label: "Critical", tone: "text-red-600 dark:text-red-300" }
+  if (score < 70) return { label: "Watch", tone: "text-amber-700 dark:text-amber-300" }
+  return { label: "Stable", tone: "text-emerald-700 dark:text-emerald-300" }
+}
+
+export function CityScore({
+  embedded = false,
+  sectorsOverride,
+}: {
+  embedded?: boolean
+  sectorsOverride?: Sector[]
+}) {
+  const { data: fetchedSectors } = useQuery({
     queryKey: ["sectors"],
     queryFn: fetchSectors,
+    enabled: !sectorsOverride || sectorsOverride.length === 0,
   })
+
+  const sectors = sectorsOverride && sectorsOverride.length > 0 ? sectorsOverride : fetchedSectors
 
   if (!sectors) return null
 
-  const { displayScore } = computeCompositeScore(sectors)
+  const { displayScore, compositeScore, avgPulse, healthRatio } = computeCompositeScore(sectors)
+  const stableCount = sectors.filter((sector) => sector.status === "stable").length
+  const watchCount = sectors.filter((sector) => sector.status === "watch").length
+  const criticalCount = sectors.filter((sector) => sector.status === "critical").length
+  const status = statusFromScore(compositeScore)
+  const needleAngle = -120 + (clamp(compositeScore, 0, 100) / 100) * 240
 
   return (
     <div className={cn(
@@ -37,15 +62,47 @@ export function CityScore({ embedded = false }: { embedded?: boolean }) {
             <path className="gauge-segment-red" d="M 203 105 A 84 84 0 0 1 198 159" fill="none" stroke="#f3a461" strokeLinecap="round" strokeWidth="12" />
             <path className="gauge-segment-red" d="M 190 176 A 84 84 0 0 1 150 204" fill="none" stroke="#ef706c" strokeLinecap="round" strokeWidth="12" />
           </svg>
-          <div className="absolute left-1/2 top-[31px] -translate-x-1/2 text-foreground">
-            <div className="h-0 w-0 border-l-[13px] border-r-[13px] border-b-[28px] border-l-transparent border-r-transparent border-b-current drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_4px_12px_rgba(255,255,255,0.28)]" />
+          <div
+            className="absolute inset-0"
+            style={{
+              transform: `rotate(${needleAngle.toFixed(1)}deg)`,
+              transition: "transform 550ms cubic-bezier(0.2, 0.9, 0.2, 1)",
+              transformOrigin: "50% 50%",
+            }}
+          >
+            <div className="absolute left-1/2 top-[31px] -translate-x-1/2 text-foreground">
+              <div className="h-0 w-0 border-l-[13px] border-r-[13px] border-b-[28px] border-l-transparent border-r-transparent border-b-current drop-shadow-[0_4px_12px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_4px_12px_rgba(255,255,255,0.28)]" />
+            </div>
           </div>
           <div className="absolute inset-[46px] rounded-full border border-[hsl(var(--foreground)/0.2)] bg-[rgba(255,255,255,0.10)] dark:border-[hsl(var(--foreground)/0.16)] dark:bg-[rgba(255,255,255,0.05)] backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_12px_36px_rgba(0,0,0,0.08)]" />
           <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
             <span className="mb-2 text-[3.25rem] font-semibold leading-none tracking-[-0.03em] text-foreground">{displayScore}</span>
             <span className="w-28 text-center text-[10px] leading-tight text-foreground/75">Average Pulse score</span>
+            <span className={cn("mt-2 text-[11px] font-semibold uppercase tracking-[0.14em]", status.tone)}>
+              {status.label}
+            </span>
           </div>
         </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px]">
+        <div className="rounded-xl bg-white/35 px-2 py-1.5 dark:bg-white/5">
+          <p className="text-muted-foreground">Stable</p>
+          <p className="font-semibold text-emerald-700 dark:text-emerald-300">{stableCount}</p>
+        </div>
+        <div className="rounded-xl bg-white/35 px-2 py-1.5 dark:bg-white/5">
+          <p className="text-muted-foreground">Watch</p>
+          <p className="font-semibold text-amber-700 dark:text-amber-300">{watchCount}</p>
+        </div>
+        <div className="rounded-xl bg-white/35 px-2 py-1.5 dark:bg-white/5">
+          <p className="text-muted-foreground">Critical</p>
+          <p className="font-semibold text-red-600 dark:text-red-300">{criticalCount}</p>
+        </div>
+      </div>
+      <div className="mt-2 rounded-xl border border-white/30 bg-white/35 px-3 py-2 text-[11px] dark:border-white/10 dark:bg-white/5">
+        <p className="text-muted-foreground">
+          Pulse strength <span className="font-semibold text-foreground">{avgPulse.toFixed(1)}</span> ·
+          Stability ratio <span className="font-semibold text-foreground">{healthRatio.toFixed(0)}%</span>
+        </p>
       </div>
       <div className="mt-auto flex justify-center gap-5 pt-5 text-[11px] font-medium">
         <span className="flex items-center gap-1.5">
