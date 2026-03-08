@@ -16,6 +16,7 @@ import {
 import { JobCard } from "@/components/jobs/job-card"
 import { JobDataStatus } from "@/components/dashboard/job-data-status"
 import { SourceMetadataGrid } from "@/components/jobs/source-metadata-grid"
+import { JobRecommendationsPanel } from "@/components/jobs/job-recommendations-panel"
 import { useUserRole } from "@/hooks/use-user-role"
 import { fetchJobInsights } from "@/services"
 import type { JobPosting } from "@/services/types"
@@ -248,6 +249,11 @@ export default function JobsPage() {
           </div>
         </div>
       )}
+
+      {/* Recommendations: skills in demand + playbooks */}
+      <div className="opacity-0 animate-fade-in-up animate-stagger-2">
+        <JobRecommendationsPanel />
+      </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 opacity-0 animate-fade-in-up animate-stagger-2">

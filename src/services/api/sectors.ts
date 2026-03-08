@@ -58,14 +58,21 @@ function mapTopRolesToCriticalRoles(topRoles: Array<{ title: string; count: numb
 }
 
 export async function fetchSectors(): Promise<Sector[]> {
-  assertApiConfigured();
+  if (!API) {
+    const { stubSectors } = await import("../stubs/sectors.stub");
+    return stubSectors;
+  }
 
-  const res = await fetch(`${API}/sectors`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to fetch sectors: ${res.status}`);
-
-  const payload = (await res.json()) as ApiEnvelope<Sector[]> | Sector[];
-  if (Array.isArray(payload)) return payload;
-  return payload.data ?? [];
+  try {
+    const res = await fetch(`${API}/sectors`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Failed to fetch sectors: ${res.status}`);
+    const payload = (await res.json()) as ApiEnvelope<Sector[]> | Sector[];
+    if (Array.isArray(payload)) return payload;
+    return payload.data ?? [];
+  } catch {
+    const { stubSectors } = await import("../stubs/sectors.stub");
+    return stubSectors;
+  }
 }
 
 export async function fetchSectorById(id: string): Promise<SectorDetail | undefined> {

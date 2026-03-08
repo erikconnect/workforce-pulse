@@ -1,6 +1,5 @@
 import type { Skill, PulseStatus } from "../types";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { stubSkills } from "../stubs/skills.stub";
 
 export interface SkillFilters {
   category?: string;
@@ -9,40 +8,33 @@ export interface SkillFilters {
 }
 
 /**
- * Fetch all skills from backend API
+ * Fetch all skills from the local Next.js API route.
+ * Falls back to stubs if the API is unavailable.
  */
 export async function fetchSkills(filters?: SkillFilters): Promise<Skill[]> {
-  if (!API) throw new Error("NEXT_PUBLIC_API_URL not configured");
-  
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.status) params.set("status", filters.status);
   if (filters?.search) params.set("search", filters.search);
-  
+
   try {
-    const res = await fetch(`${API}/skills?${params}`, { cache: "no-store" });
+    const base =
+      typeof window === "undefined"
+        ? (process.env.NEXTAUTH_URL ?? "http://localhost:3000")
+        : "";
+    const res = await fetch(`${base}/api/skills?${params}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to fetch skills: ${res.status}`);
-    const data = await res.json();
-    return data.data || data;
+    return res.json();
   } catch (err) {
-    console.error("❌ Failed to fetch skills:", err);
-    throw err;
+    console.error("❌ Failed to fetch skills, using stubs:", err);
+    return stubSkills;
   }
 }
 
 /**
- * Fetch a skill by ID
+ * Fetch a skill by ID — looks up from the full skills list.
  */
 export async function fetchSkillById(id: string): Promise<Skill | undefined> {
-  if (!API) throw new Error("NEXT_PUBLIC_API_URL not configured");
-  
-  try {
-    const res = await fetch(`${API}/skills/${id}`, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Failed to fetch skill ${id}`);
-    const data = await res.json();
-    return data.data || data;
-  } catch (err) {
-    console.error(`❌ Failed to fetch skill ${id}:`, err);
-    throw err;
-  }
+  const skills = await fetchSkills();
+  return skills.find((s) => s.id === id);
 }

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, RefreshCw } from "lucide-react"
 import { fetchWorkforceData } from "@/services/api/workforce-data"
 import { MontgomeryFact } from "@/components/dashboard/montgomery-fact"
 import { useTotalJobs } from "@/hooks/use-total-jobs"
@@ -26,6 +26,19 @@ export function CityProfile({ variant = "admin" }: CityProfileProps) {
     staleTime: 3600_000,
   })
   const { totalJobs } = useTotalJobs()
+
+  const { data: cityJobsData } = useQuery({
+    queryKey: ["cityJobs"],
+    queryFn: () => fetch("/api/city-jobs").then((r) => r.json()),
+    staleTime: 3600_000,
+  })
+
+  const lastUpdated = cityJobsData?.lastFetched
+    ? (() => {
+        const mins = Math.round((Date.now() - new Date(cityJobsData.lastFetched).getTime()) / 60000)
+        return mins < 1 ? "just now" : `${mins}m ago`
+      })()
+    : null
 
   const metricsConfig = ALL_METRICS
 
@@ -115,6 +128,12 @@ export function CityProfile({ variant = "admin" }: CityProfileProps) {
                     </div>
                   </div>
                   <span className="text-xs font-medium tracking-wide">{m.labelFull}</span>
+                  {m.key === "jobs" && lastUpdated && (
+                    <span className="flex items-center gap-1 text-[9px] text-white/50 mt-0.5">
+                      <RefreshCw className="h-2.5 w-2.5" />
+                      {lastUpdated}
+                    </span>
+                  )}
                 </div>
               )
             })}
