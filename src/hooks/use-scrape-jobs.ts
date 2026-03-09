@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ScrapeStatus {
   isLoading: boolean;
@@ -14,6 +15,7 @@ interface ScrapeStatus {
 }
 
 export function useScrapeJobs(enabled = true) {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<ScrapeStatus>({
     isLoading: false,
     lastScrapeAt: null,
@@ -23,45 +25,43 @@ export function useScrapeJobs(enabled = true) {
 
   useEffect(() => {
     if (!enabled) return;
-    // Trigger background scrape on mount
     const triggerScrape = async () => {
       try {
         setStatus((prev) => ({ ...prev, isLoading: true, error: null }));
-        
+
         const response = await fetch("/api/jobs", {
           method: "GET",
           cache: "no-store",
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
-        
+
         setStatus({
           isLoading: false,
-          lastScrapeAt: data.cache?.lastScrapeAt 
+          lastScrapeAt: data.cache?.lastScrapeAt
             ? new Date(data.cache.lastScrapeAt).toLocaleString()
             : null,
           totalJobs: data.count ?? 0,
           error: null,
         });
 
+        // Invalidate job-related queries so CityProfile and jobs page refresh
+        queryClient.invalidateQueries({ queryKey: ["cityJobs"] });
+        queryClient.invalidateQueries({ queryKey: ["allJobPostings"] });
+        queryClient.invalidateQueries({ queryKey: ["job-insights"] });
+
         console.log("[useScrapeJobs] ✅ Cache status:", data.cache);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
         console.error("[useScrapeJobs] ❌", errorMsg);
-        setStatus((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: errorMsg,
-        }));
+        setStatus((prev) => ({ ...prev, isLoading: false, error: errorMsg }));
       }
     };
 
     triggerScrape();
-  }, [enabled]);
+  }, [enabled, queryClient]);
 
   return status;
 }

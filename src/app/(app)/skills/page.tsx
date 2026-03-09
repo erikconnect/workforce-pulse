@@ -17,8 +17,10 @@ import {
   ArrowUpRight,
   Link2,
   ShieldAlert,
+  MapPin,
 } from "lucide-react"
-import { fetchMissionMemberProfile, fetchRoles, fetchSectors, fetchSkills, recordSkillAction } from "@/services"
+import { fetchMissionMemberProfile, fetchPlaybooks, fetchRoles, fetchSectors, fetchSkills, recordSkillAction } from "@/services"
+import { SkillsGapPanel } from "@/components/skills/skills-gap-panel"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -87,8 +89,18 @@ const ALIGNMENT_LABEL: Record<PulseStatus, { text: string; cls: string }> = {
   stable: { text: "Steady", cls: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700" },
 }
 
-function SkillCardExpanded({ skill, sectorMap }: { skill: Skill; sectorMap: Map<string, string> }) {
+function SkillCardExpanded({
+  skill,
+  sectorMap,
+  cityJobs,
+}: {
+  skill: Skill
+  sectorMap: Map<string, string>
+  cityJobs: { title: string; link: string; salary: string; department: string; sectorId: string | null }[]
+}) {
   const [expanded, setExpanded] = useState(false)
+  const [jobsExpanded, setJobsExpanded] = useState(false)
+
   const queryClient = useQueryClient()
   const relatedSectors = useMemo(() => {
     const sectorIds = new Set<string>()
@@ -98,6 +110,14 @@ function SkillCardExpanded({ skill, sectorMap }: { skill: Skill; sectorMap: Map<
     }
     return Array.from(sectorIds)
   }, [skill.relatedRoles, sectorMap])
+
+  // Match city jobs by sector — guaranteed live data from JobAps
+  const relatedJobs = useMemo(() => {
+    if (relatedSectors.length === 0) return []
+    return cityJobs
+      .filter((j) => j.sectorId && relatedSectors.includes(j.sectorId))
+      .slice(0, 4)
+  }, [cityJobs, relatedSectors])
 
   const alignment = ALIGNMENT_LABEL[skill.demandLevel]
   const trainingCount = skill.trainingResources.length
@@ -236,6 +256,44 @@ function SkillCardExpanded({ skill, sectorMap }: { skill: Skill; sectorMap: Map<
             )}
           </>
         )}
+
+        {/* Related Jobs */}
+        {relatedJobs.length > 0 && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-full justify-between rounded-xl border border-white/30 bg-white/35 px-2 text-xs text-muted-foreground hover:bg-white/55 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              onClick={() => setJobsExpanded(!jobsExpanded)}
+            >
+              <span className="flex items-center gap-1">
+                <Briefcase className="h-3 w-3" />
+                {jobsExpanded ? "Hide" : "Show"} related jobs ({relatedJobs.length})
+              </span>
+              {jobsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+            {jobsExpanded && (
+              <div className="space-y-1.5 pl-1">
+                {relatedJobs.slice(0, 4).map((job) => (
+                  <a
+                    key={job.title}
+                    href={job.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-start gap-2 rounded-2xl border border-white/30 bg-white/40 px-3 py-2 text-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-white/5"
+                  >
+                    <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground group-hover:text-primary" />
+                    <div className="min-w-0">
+                      <span className="font-medium text-primary hover:underline line-clamp-1">{job.title}</span>
+                      <p className="text-muted-foreground">{job.department}{job.salary ? ` · ${job.salary}` : ""}</p>
+                    </div>
+                    <ExternalLink className="ml-auto mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   )
@@ -264,6 +322,20 @@ export default function SkillsPage() {
     queryKey: ["missionMemberProfile"],
     queryFn: fetchMissionMemberProfile,
   })
+
+  const { data: cityJobsData } = useQuery({
+    queryKey: ["cityJobs"],
+    queryFn: () => fetch("/api/city-jobs").then((r) => r.json()),
+    staleTime: 3600_000,
+  })
+
+  const { data: playbooks } = useQuery({
+    queryKey: ["playbooks"],
+    queryFn: fetchPlaybooks,
+    staleTime: 3600_000,
+  })
+  const cityJobs: { title: string; link: string; salary: string; department: string; sectorId: string | null }[] =
+    cityJobsData?.jobs ?? []
 
   const sectorMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -496,6 +568,14 @@ export default function SkillsPage() {
         </div>
       </div>
 
+      {roles && skills && (
+        <SkillsGapPanel
+          roles={roles}
+          skills={skills}
+          playbooks={playbooks ?? []}
+        />
+      )}
+
       <div>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
@@ -516,7 +596,7 @@ export default function SkillsPage() {
           {isLoading
             ? [...Array(9)].map((_, i) => <SkillSkeleton key={i} />)
             : filtered.map((skill) => (
-                <SkillCardExpanded key={skill.id} skill={skill} sectorMap={sectorMap} />
+                <SkillCardExpanded key={skill.id} skill={skill} sectorMap={sectorMap} cityJobs={cityJobs} />
               ))}
 
           {!isLoading && filtered.length === 0 && (
