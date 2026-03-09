@@ -68,7 +68,7 @@ export function CityProfile({ variant = "admin" }: CityProfileProps) {
 
   return (
     <div className="glass-card-strong overflow-hidden rounded-3xl border border-white/40 dark:border-white/10 shadow-lg">
-      <div className="relative h-64 overflow-hidden rounded-3xl">
+      <div className="relative h-[380px] overflow-hidden rounded-3xl sm:h-64">
         <div className="absolute inset-0 montgomery-hero-photo montgomery-hero-photo-1 z-0 scale-[1.02]" aria-hidden />
         <div className="absolute inset-0 montgomery-hero-photo montgomery-hero-photo-2 z-0 scale-[1.02]" aria-hidden />
         <div
@@ -79,9 +79,9 @@ export function CityProfile({ variant = "admin" }: CityProfileProps) {
         <div className="absolute inset-0 montgomery-hero-vignette z-[1]" aria-hidden />
         <div className="montgomery-hero-lights absolute inset-0 opacity-45 z-[2]" aria-hidden />
 
-        <div className="relative z-20 w-full h-full p-8 flex justify-between items-center text-white">
+        <div className="relative z-20 flex h-full w-full flex-col items-start justify-center gap-6 p-6 text-white sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-md">
-            <h2 className="font-display text-4xl font-medium mb-2 text-white">
+            <h2 className="mb-2 font-display text-3xl font-medium text-white sm:text-4xl">
               Montgomery, Alabama
             </h2>
             <MontgomeryFact compact className="mb-5 max-w-[24rem]" />
@@ -93,12 +93,12 @@ export function CityProfile({ variant = "admin" }: CityProfileProps) {
               <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="flex gap-8">
+          <div className="grid w-full grid-cols-3 gap-3 sm:gap-6 lg:w-auto lg:grid-cols-3">
             {metrics.map((m) => {
               const val = isLoading ? "--" : (typeof m.value === "number" ? m.value.toLocaleString("en-US") : String(m.value))
               return (
                 <div key={m.key} className="flex flex-col items-center">
-                  <div className={`relative w-24 h-24 mb-2 ${m.glowClass}`}>
+                  <div className={`relative mb-1.5 h-20 w-20 sm:h-24 sm:w-24 ${m.glowClass}`}>
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                       <circle
                         cx="50"
@@ -123,11 +123,11 @@ export function CityProfile({ variant = "admin" }: CityProfileProps) {
                     </svg>
                     <div className="absolute inset-[10px] rounded-full hero-ring-shell" aria-hidden />
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold leading-none">{val}</span>
-                      <span className="text-[10px] text-white/80 uppercase mt-1">{m.label}</span>
+                      <span className="text-base font-bold leading-none sm:text-xl">{val}</span>
+                      <span className="mt-1 text-[9px] uppercase text-white/80 sm:text-[10px]">{m.label}</span>
                     </div>
                   </div>
-                  <span className="text-xs font-medium tracking-wide">{m.labelFull}</span>
+                  <span className="text-[10px] font-medium tracking-wide sm:text-xs">{m.labelFull}</span>
                   {m.key === "jobs" && lastUpdated && (
                     <span className="flex items-center gap-1 text-[9px] text-white/50 mt-0.5">
                       <RefreshCw className="h-2.5 w-2.5" />

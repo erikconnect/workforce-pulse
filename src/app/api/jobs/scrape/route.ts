@@ -6,7 +6,7 @@
  *   Body (optional):
  *     { queries?: { keyword: string; location: string }[] }
  *
- *   Returns: { jobs: number; insights: JobInsights; durationMs: number }
+ *   Returns: Detailed scraping results including new vs recurring job counts
  *
  * GET /api/jobs/scrape
  *   Returns the current job store state + cache status
@@ -22,6 +22,25 @@ import { getCacheStatus } from "../scrape-cache";
 // Allow up to 180s — scraping multiple sources (Indeed + LinkedIn + Glassdoor) takes ~90-150s
 export const maxDuration = 180;
 
+// Helper: Timeout wrapper (returns empty result if scraper times out)
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutLabel: string
+): Promise<T | null> {
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error(`${timeoutLabel} timed out after ${timeoutMs}ms`)), timeoutMs)
+      ),
+    ]);
+  } catch (err) {
+    console.warn(`[withTimeout] ⏱️ ${timeoutLabel} failed:`, err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const queries: { keyword: string; location: string }[] =
@@ -29,64 +48,100 @@ export async function POST(req: NextRequest) {
 
   const startTime = Date.now();
   const results = {
-    indeed: { jobs: 0, errors: 0 },
-    linkedin: { jobs: 0, errors: 0 },
-    glassdoor: { jobs: 0, errors: 0 },
-    totalNew: 0,
-    totalStored: 0,
+    sources: {
+      indeed: { jobs: 0, new: 0, updated: 0, errors: 0 },
+      linkedin: { jobs: 0, new: 0, updated: 0, errors: 0 },
+      glassdoor: { jobs: 0, new: 0, updated: 0, errors: 0 },
+    },
+    summary: {
+      totalCollected: 0,
+      totalNew: 0,
+      totalUpdated: 0,
+      totalStored: 0,
+    },
   };
 
   try {
     console.log("[Jobs Scrape API] Starting scrape with sources: Indeed + LinkedIn + Glassdoor");
 
-    // Scrape Indeed
+    // Scrape Indeed (45s timeout)
     try {
       console.log("[Jobs Scrape API] Scraping Indeed...");
-      const indeedResult = await scrapeIndeedJobs(queries);
-      const postings = indeedResult.jobs.map(raw => normalizeIndeedRecord(raw as unknown as RawIndeedRecord));
-      await jobStore.bulkUpsert(postings);
-      results.indeed.jobs = indeedResult.jobs.length;
-      console.log(`[Jobs Scrape API] ✅ Indeed: ${indeedResult.jobs.length} jobs`);
+      const indeedResult = await withTimeout(scrapeIndeedJobs(queries), 45000, "Indeed scraper");
+      if (indeedResult === null) {
+        results.sources.indeed.errors = 1;
+        console.warn("[Jobs Scrape API] ⏱️ Indeed scraper timed out");
+      } else {
+        const postings = indeedResult.jobs.map(raw => normalizeIndeedRecord(raw as unknown as RawIndeedRecord));
+        const stats = postings.length > 0 ? await jobStore.bulkUpsert(postings) : null;
+        results.sources.indeed.jobs = indeedResult.jobs.length;
+        results.sources.indeed.new = stats?.newJobs ?? 0;
+        results.sources.indeed.updated = stats?.updatedJobs ?? 0;
+        results.summary.totalCollected += indeedResult.jobs.length;
+        results.summary.totalNew += stats?.newJobs ?? 0;
+        results.summary.totalUpdated += stats?.updatedJobs ?? 0;
+        console.log(`[Jobs Scrape API] ✅ Indeed: ${indeedResult.jobs.length} jobs (${stats?.newJobs ?? 0} new, ${stats?.updatedJobs ?? 0} updated)`);
+      }
     } catch (err) {
       console.error("[Jobs Scrape API] ❌ Indeed failed:", err);
-      results.indeed.errors = 1;
+      results.sources.indeed.errors = 1;
     }
 
-    // Scrape LinkedIn
+    // Scrape LinkedIn (45s timeout)
     try {
       console.log("[Jobs Scrape API] Scraping LinkedIn...");
-      const linkedinResult = await scrapeLinkedInJobs(queries);
-      const postings = linkedinResult.jobs.map(raw => normalizeLinkedInRecord(raw as unknown as RawLinkedInRecord));
-      await jobStore.bulkUpsert(postings);
-      results.linkedin.jobs = linkedinResult.jobs.length;
-      console.log(`[Jobs Scrape API] ✅ LinkedIn: ${linkedinResult.jobs.length} jobs`);
+      const linkedinResult = await withTimeout(scrapeLinkedInJobs(queries), 45000, "LinkedIn scraper");
+      if (linkedinResult === null) {
+        results.sources.linkedin.errors = 1;
+        console.warn("[Jobs Scrape API] ⏱️ LinkedIn scraper timed out");
+      } else {
+        const postings = linkedinResult.jobs.map(raw => normalizeLinkedInRecord(raw as unknown as RawLinkedInRecord));
+        const stats = postings.length > 0 ? await jobStore.bulkUpsert(postings) : null;
+        results.sources.linkedin.jobs = linkedinResult.jobs.length;
+        results.sources.linkedin.new = stats?.newJobs ?? 0;
+        results.sources.linkedin.updated = stats?.updatedJobs ?? 0;
+        results.summary.totalCollected += linkedinResult.jobs.length;
+        results.summary.totalNew += stats?.newJobs ?? 0;
+        results.summary.totalUpdated += stats?.updatedJobs ?? 0;
+        console.log(`[Jobs Scrape API] ✅ LinkedIn: ${linkedinResult.jobs.length} jobs (${stats?.newJobs ?? 0} new, ${stats?.updatedJobs ?? 0} updated)`);
+      }
     } catch (err) {
       console.error("[Jobs Scrape API] ❌ LinkedIn failed:", err);
-      results.linkedin.errors = 1;
+      results.sources.linkedin.errors = 1;
     }
 
-    // Scrape Glassdoor
+    // Scrape Glassdoor (45s timeout)
     try {
       console.log("[Jobs Scrape API] Scraping Glassdoor...");
-      const glassdoorResult = await scrapeGlassdoorJobs(queries);
-      const postings = glassdoorResult.jobs.map(raw => normalizeGlassdoorRecord(raw as unknown as RawGlassdoorRecord));
-      await jobStore.bulkUpsert(postings);
-      results.glassdoor.jobs = glassdoorResult.jobs.length;
-      console.log(`[Jobs Scrape API] ✅ Glassdoor: ${glassdoorResult.jobs.length} jobs`);
+      const glassdoorResult = await withTimeout(scrapeGlassdoorJobs(queries), 45000, "Glassdoor scraper");
+      if (glassdoorResult === null) {
+        results.sources.glassdoor.errors = 1;
+        console.warn("[Jobs Scrape API] ⏱️ Glassdoor scraper timed out");
+      } else {
+        const postings = glassdoorResult.jobs.map(raw => normalizeGlassdoorRecord(raw as unknown as RawGlassdoorRecord));
+        const stats = postings.length > 0 ? await jobStore.bulkUpsert(postings) : null;
+        results.sources.glassdoor.jobs = glassdoorResult.jobs.length;
+        results.sources.glassdoor.new = stats?.newJobs ?? 0;
+        results.sources.glassdoor.updated = stats?.updatedJobs ?? 0;
+        results.summary.totalCollected += glassdoorResult.jobs.length;
+        results.summary.totalNew += stats?.newJobs ?? 0;
+        results.summary.totalUpdated += stats?.updatedJobs ?? 0;
+        console.log(`[Jobs Scrape API] ✅ Glassdoor: ${glassdoorResult.jobs.length} jobs (${stats?.newJobs ?? 0} new, ${stats?.updatedJobs ?? 0} updated)`);
+      }
     } catch (err) {
       console.error("[Jobs Scrape API] ❌ Glassdoor failed:", err);
-      results.glassdoor.errors = 1;
+      results.sources.glassdoor.errors = 1;
     }
 
     // Derive insights
     const insights = deriveInsights(await jobStore.getAll());
     jobStore.setInsights(insights);
 
-    results.totalNew = results.indeed.jobs + results.linkedin.jobs + results.glassdoor.jobs;
-    results.totalStored = await jobStore.count();
+    results.summary.totalStored = await jobStore.count();
 
     const duration = Date.now() - startTime;
     console.log(`[Jobs Scrape API] ✅ Complete in ${(duration / 1000).toFixed(1)}s`);
+    console.log(`[Jobs Scrape API] 📊 Summary - Collected: ${results.summary.totalCollected}, New: ${results.summary.totalNew}, Updated: ${results.summary.totalUpdated}, Total in DB: ${results.summary.totalStored}`);
 
     return NextResponse.json({
       ...results,

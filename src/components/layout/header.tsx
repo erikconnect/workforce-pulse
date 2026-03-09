@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react"
 import { useSession } from "next-auth/react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Bell, Calendar, ChevronRight, ChevronDown, LogOut, Menu, Play, Search, Settings, User } from "lucide-react"
+import { WorkforcePulseMark } from "@/components/branding/workforce-icons"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { fetchAlerts, fetchMissionMemberProfile, fetchPulseSummary, submitDailyCheckIn } from "@/services"
 import { Button } from "@/components/ui/button"
@@ -61,7 +62,7 @@ export function Header({ onMenuClick, onStartTour }: HeaderProps) {
   })
 
   return (
-    <header className="flex h-16 items-center gap-3 border-b border-glass-border-light/80 dark:border-glass-border-dark glass-panel px-4 md:px-6 shrink-0">
+    <header className="glass-panel flex h-16 shrink-0 items-center gap-2 border-b border-glass-border-light/80 px-3 md:gap-3 md:px-6 dark:border-glass-border-dark">
       <Button
         variant="ghost"
         size="icon"
@@ -72,7 +73,17 @@ export function Header({ onMenuClick, onStartTour }: HeaderProps) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      <Separator orientation="vertical" className="lg:hidden h-5" />
+      <Separator orientation="vertical" className="hidden h-5 md:block lg:hidden" />
+
+      <Link href="/dashboard" className="flex items-center gap-2 sm:hidden" aria-label="Workforce Pulse home">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/35 bg-primary/10 text-primary">
+          <WorkforcePulseMark className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-display text-sm font-semibold leading-none">Workforce Pulse</p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Montgomery</p>
+        </div>
+      </Link>
 
       {/* Search — opens command palette */}
       <button
@@ -153,7 +164,7 @@ export function Header({ onMenuClick, onStartTour }: HeaderProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ThemeToggle className="bg-white/20 dark:bg-white/5 hover:bg-white/35 dark:hover:bg-white/10" />
+      <ThemeToggle className="hidden bg-white/20 hover:bg-white/35 dark:bg-white/5 dark:hover:bg-white/10 sm:inline-flex" />
 
       <Button
         variant="outline"
@@ -165,7 +176,7 @@ export function Header({ onMenuClick, onStartTour }: HeaderProps) {
             ? "Today's check-in is already complete. A new check-in opens tomorrow."
             : "Check in once per day to keep workforce pulse trends current."
         }
-        className="gap-2 glass-panel rounded-2xl px-6 py-3 text-sm font-medium hover:bg-white/40 dark:hover:bg-white/10"
+        className="hidden gap-2 glass-panel rounded-2xl px-6 py-3 text-sm font-medium hover:bg-white/40 sm:inline-flex dark:hover:bg-white/10"
       >
         <Calendar className="h-[18px] w-[18px]" />
         <span className="hidden sm:inline">
@@ -175,7 +186,7 @@ export function Header({ onMenuClick, onStartTour }: HeaderProps) {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-3 pl-4 border-l border-glass-border-light dark:border-glass-border-dark ml-1 rounded-2xl hover:bg-white/10 transition-colors pr-2 py-1.5">
+          <button className="ml-0 flex items-center gap-2 rounded-2xl px-1.5 py-1.5 transition-colors hover:bg-white/10 md:ml-1 md:gap-3 md:border-l md:border-glass-border-light md:pl-4 md:pr-2 dark:md:border-glass-border-dark">
             <div className="hidden md:block text-right">
               <p className="text-sm font-semibold leading-none">{userName}</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">{userCity}</p>

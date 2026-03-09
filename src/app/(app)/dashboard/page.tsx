@@ -185,6 +185,7 @@ export default function DashboardPage() {
 }
 
 function AdminDashboard() {
+  const STREAK_DAYS = 7
   const userName = "City Admin"
   const [greeting, setGreeting] = useState("Hello")
   const queryClient = useQueryClient()
@@ -209,6 +210,7 @@ function AdminDashboard() {
     mutationFn: submitDailyCheckIn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pulseSummary"] })
+      queryClient.invalidateQueries({ queryKey: ["missionMemberProfile"] })
     },
   })
 
@@ -276,7 +278,49 @@ function AdminDashboard() {
     return liveSectors.length > 0 ? liveSectors : (sectors ?? [])
   }, [liveSectors, sectors])
 
+  const sectorTimelineSummary = useMemo(() => {
+    const timelines = jobInsights?.insights?.sectorTimelines ?? []
+    if (timelines.length === 0) return [] as Array<{
+      sectorId: string
+      name: string
+      series: Array<{ date: string; count: number }>
+      last7: number
+      previous7: number
+      last14: number
+      wowDelta: number
+      status: "critical" | "watch" | "stable"
+    }>
+
+    return timelines
+      .map((timeline) => {
+        const series = Array.isArray(timeline.series) ? timeline.series : []
+        const last7 = series.slice(-7).reduce((sum, point) => sum + point.count, 0)
+        const previous7 = series.slice(-14, -7).reduce((sum, point) => sum + point.count, 0)
+        const last14 = series.slice(-14).reduce((sum, point) => sum + point.count, 0)
+        const wowDelta = previous7 > 0 ? Math.round(((last7 - previous7) / previous7) * 100) : (last7 > 0 ? 100 : 0)
+        const status: "critical" | "watch" | "stable" = last14 >= 20 ? "critical" : last14 >= 8 ? "watch" : "stable"
+        return {
+          sectorId: timeline.sectorId,
+          name: effectiveSectors.find((sector) => sector.id === timeline.sectorId)?.name ?? formatSectorName(timeline.sectorId),
+          series,
+          last7,
+          previous7,
+          last14,
+          wowDelta,
+          status,
+        }
+      })
+      .sort((left, right) => right.last14 - left.last14)
+  }, [effectiveSectors, jobInsights?.insights?.sectorTimelines])
+
   const criticalRolesCount = useMemo(() => {
+    if (sectorTimelineSummary.length > 0) {
+      const sumCritical = sectorTimelineSummary
+        .filter((sector) => sector.status === "critical")
+        .reduce((sum, sector) => sum + sector.last14, 0)
+      if (sumCritical > 0) return sumCritical
+      return sectorTimelineSummary[0]?.last14 ?? 0
+    }
     if (jobInsights?.insights?.criticalRolesCount != null) return jobInsights.insights.criticalRolesCount
     const criticalOpenings = effectiveSectors
       .filter((sector) => sector.status === "critical")
@@ -284,14 +328,18 @@ function AdminDashboard() {
     if (criticalOpenings > 0) return criticalOpenings
     const ps = workforceData?.sectorStats?.find((s) => s.sectorId === "public-safety")
     return ps?.cityOpenJobs ?? 0
-  }, [effectiveSectors, jobInsights?.insights?.criticalRolesCount, workforceData?.sectorStats])
+  }, [effectiveSectors, jobInsights?.insights?.criticalRolesCount, sectorTimelineSummary, workforceData?.sectorStats])
   const criticalRoleSignals = useMemo<TimelinePoint[]>(() => {
-    const series = jobInsights?.insights?.sectorTimelines?.find((timeline) => timeline.sectorId === "public-safety")?.series ?? []
+    const selectedSectorId =
+      sectorTimelineSummary.find((sector) => sector.status === "critical")?.sectorId
+      ?? sectorTimelineSummary[0]?.sectorId
+      ?? "public-safety"
+    const series = jobInsights?.insights?.sectorTimelines?.find((timeline) => timeline.sectorId === selectedSectorId)?.series ?? []
     return series.slice(-14).map((point) => ({
       date: point.date,
       value: point.count,
     }))
-  }, [jobInsights?.insights?.sectorTimelines])
+  }, [jobInsights?.insights?.sectorTimelines, sectorTimelineSummary])
   const trainingNeedSignals = useMemo<TimelinePoint[]>(() => {
     return (jobInsights?.insights?.totalSkillMentionsByDay ?? []).slice(-14).map((point) => ({
       date: point.date,
@@ -330,6 +378,17 @@ function AdminDashboard() {
       return right.openRolesCount - left.openRolesCount
     })[0] ?? null
   }, [sectorsOrdered])
+  const topPressureSectorFromPostings = useMemo(() => {
+    if (sectorTimelineSummary.length === 0) return null
+    const top = sectorTimelineSummary[0]
+    if (!top) return null
+    return {
+      sectorId: top.sectorId,
+      name: top.name,
+      openRoles: top.last14,
+      status: top.status,
+    }
+  }, [sectorTimelineSummary])
   const strongestSector = useMemo(() => {
     if (!effectiveSectors || effectiveSectors.length === 0) return null
     return [...effectiveSectors].sort((left, right) => right.pulseScore - left.pulseScore)[0] ?? null
@@ -344,11 +403,66 @@ function AdminDashboard() {
   }, [effectiveSectors])
 
   const topSectors = useMemo(() => {
+    if (sectorTimelineSummary.length === 0) {
+      const priority: Record<string, number> = { critical: 0, watch: 1, stable: 2 }
+      return [...sectorsOrdered]
+        .sort((a, b) => (priority[a.status] ?? 2) - (priority[b.status] ?? 2))
+        .slice(0, 4)
+    }
+
+    const byId = new Map(effectiveSectors.map((sector) => [sector.id, sector]))
+    const maxLast7 = Math.max(...sectorTimelineSummary.map((sector) => sector.last7), 1)
+
+    const sectorsFromPostedDate = sectorTimelineSummary
+      .map((timeline) => {
+        const base = byId.get(timeline.sectorId)
+        const last7 = timeline.last7
+        const wowDelta = timeline.wowDelta
+        const pulseScore = Math.min(100, Math.max(8, Math.round((last7 / maxLast7) * 100)))
+        const status: "critical" | "watch" | "stable" = timeline.status
+        const criticalRoles = status === "critical" ? last7 : 0
+
+        return {
+          id: timeline.sectorId,
+          name: timeline.name,
+          pulseScore,
+          status,
+          kpis: [
+            {
+              label: "Postings (7d)",
+              value: last7,
+              delta: wowDelta,
+              status,
+            },
+            {
+              label: "WoW Change",
+              value: `${wowDelta > 0 ? "+" : ""}${wowDelta}%`,
+              delta: wowDelta,
+              status: wowDelta > 10 ? "critical" : wowDelta > 0 ? "watch" : "stable",
+            },
+            {
+              label: "Critical Roles",
+              value: criticalRoles,
+              delta: 0,
+              status,
+            },
+          ],
+          sparklineData: timeline.series.slice(-7).map((point) => point.count),
+          employeeCount: base?.employeeCount ?? 0,
+          openRolesCount: last7,
+          description: base?.description ?? `Posted-date trend for ${formatSectorName(timeline.sectorId)}.`,
+        }
+      })
+
     const priority: Record<string, number> = { critical: 0, watch: 1, stable: 2 }
-    return [...sectorsOrdered]
-      .sort((a, b) => (priority[a.status] ?? 2) - (priority[b.status] ?? 2))
+    return sectorsFromPostedDate
+      .sort((left, right) => {
+        const statusDelta = (priority[left.status] ?? 2) - (priority[right.status] ?? 2)
+        if (statusDelta !== 0) return statusDelta
+        return right.openRolesCount - left.openRolesCount
+      })
       .slice(0, 4)
-  }, [sectorsOrdered])
+  }, [effectiveSectors, sectorTimelineSummary, sectorsOrdered])
   const statusMix = useMemo(() => {
     const total = effectiveSectors?.length ?? 0
     const stable = effectiveSectors?.filter((sector) => sector.status === "stable").length ?? 0
@@ -370,10 +484,12 @@ function AdminDashboard() {
   const checkInPreview = useMemo(() => {
     const streak = summary?.checkInStreak ?? 0
     const completedToday = summary?.checkInCompleted ?? false
-    // When completed today: show streak (1–5). When not: show prior streak only, max 4 (today unfilled)
-    const activeCount = completedToday ? Math.min(5, Math.max(1, streak)) : Math.min(4, Math.max(0, streak))
-    return Array.from({ length: 5 }, (_, index) => index < activeCount)
-  }, [summary?.checkInCompleted, summary?.checkInStreak])
+    // When completed today: show streak (1–7). When not: show prior streak only, max 6 (today unfilled)
+    const activeCount = completedToday
+      ? Math.min(STREAK_DAYS, Math.max(1, streak))
+      : Math.min(STREAK_DAYS - 1, Math.max(0, streak))
+    return Array.from({ length: STREAK_DAYS }, (_, index) => index < activeCount)
+  }, [STREAK_DAYS, summary?.checkInCompleted, summary?.checkInStreak])
   const criticalRolesDelta = useMemo(() => seriesDelta(criticalRoleSignals), [criticalRoleSignals])
   const trainingNeedsDelta = useMemo(() => seriesDelta(trainingNeedSignals), [trainingNeedSignals])
   const trainingFocusChips = useMemo(() => {
@@ -409,6 +525,14 @@ function AdminDashboard() {
         : "critical"
 
   const liveMetricsLoading = !workforceData && !jobInsights && effectiveSectors.length === 0
+  const criticalOpenRolesValue =
+    (topPressureSectorFromPostings?.openRoles ?? 0) > 0
+      ? topPressureSectorFromPostings?.openRoles ?? 0
+      : (topPressureSector?.openRolesCount ?? 0) > 0
+      ? topPressureSector?.openRolesCount ?? 0
+      : criticalRolesCount > 0
+        ? criticalRolesCount
+        : workforceData?.cityJobsTotal ?? 0
 
   return (
     <div className="space-y-6">
@@ -427,12 +551,8 @@ function AdminDashboard() {
         <CityProfile />
       </div>
 
-      {/* Job Insights & Recommendations */}
-      <div className="opacity-0 animate-fade-in-up animate-stagger-1">
-        <JobInsightsCards />
-      </div>
-
-      <div data-tour="kpi-cards" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 4 KPI Cards - Critical Metrics */}
+      <div data-tour="kpi-cards" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-0 animate-fade-in-up animate-stagger-1" style={{ animationFillMode: "forwards" }}>
         <DashboardSignalCard
           tone="critical"
           eyebrow="Priority coverage"
@@ -445,12 +565,21 @@ function AdminDashboard() {
           stats={[
             {
               label: "Hot sector",
-              value: topPressureSector?.name ?? "Public Safety",
-              tone: topPressureSector?.status === "stable" ? "stable" : topPressureSector?.status === "critical" ? "critical" : "watch",
+              value: topPressureSectorFromPostings?.name ?? topPressureSector?.name ?? "Public Safety",
+              tone:
+                topPressureSectorFromPostings?.status === "stable"
+                  ? "stable"
+                  : topPressureSectorFromPostings?.status === "critical"
+                    ? "critical"
+                    : topPressureSector?.status === "stable"
+                      ? "stable"
+                      : topPressureSector?.status === "critical"
+                        ? "critical"
+                        : "watch",
             },
             {
               label: "Open roles",
-              value: (topPressureSector?.openRolesCount ?? criticalRolesCount).toLocaleString("en-US"),
+              value: criticalOpenRolesValue.toLocaleString("en-US"),
             },
             {
               label: "14-day shift",
@@ -626,9 +755,9 @@ function AdminDashboard() {
               <div className="h-full rounded-full bg-gradient-to-r from-primary/70 via-primary to-amber-400" style={{ width: `${streakProgress}%` }} />
             </div>
             <div className="mt-4 flex justify-between items-end">
-              {[1, 2, 3, 4, 5].map((day) => {
+              {Array.from({ length: STREAK_DAYS }, (_, i) => i + 1).map((day) => {
                 const filled = checkInPreview[day - 1]
-                const isToday = day === 5
+                const isToday = day === STREAK_DAYS
                 return (
                   <div key={day} className="flex flex-col items-center gap-2">
                     <div
@@ -657,6 +786,11 @@ function AdminDashboard() {
         </DashboardSignalCard>
       </div>
 
+      {/* Job Insights & Recommendations */}
+      <div className="opacity-0 animate-fade-in-up animate-stagger-2" style={{ animationFillMode: "forwards" }}>
+        <JobInsightsCards />
+      </div>
+
       <div className="mb-8 opacity-0 animate-fade-in-up animate-stagger-3" style={{ animationFillMode: "forwards" }}>
         <div className="glass-panel rounded-[30px] p-4 md:p-5">
           <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[1.55fr_0.9fr]">
@@ -674,7 +808,7 @@ function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-stretch opacity-0 animate-fade-in-up animate-stagger-4" style={{ animationFillMode: "forwards" }}>
         <div data-tour="sector-strip" className="lg:col-span-2 space-y-4 order-2 lg:order-1 lg:min-h-[404px]">
           <h2 className="font-semibold text-lg">Sectors at a Glance</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {topSectors.map((sector) => (
               <SectorStripCard key={sector.id} sector={sector} />
             ))}

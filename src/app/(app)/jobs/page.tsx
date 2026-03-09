@@ -297,7 +297,7 @@ export default function JobsPage() {
           variant={openOnly ? "default" : "outline"}
           size="sm"
           onClick={() => setOpenOnly(!openOnly)}
-          className="rounded-xl whitespace-nowrap"
+          className="w-full rounded-xl sm:w-auto"
         >
           <Search className="h-4 w-4 mr-2" />
           {openOnly ? "Open Only" : "All Jobs"}

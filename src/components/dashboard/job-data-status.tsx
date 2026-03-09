@@ -1,9 +1,11 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, CheckCircle2, Info, Database } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, CheckCircle2, Info, Database, Zap, RefreshCw } from "lucide-react"
 import { fetchJobInsights } from "@/services"
 import { useTotalJobs } from "@/hooks/use-total-jobs"
 
@@ -13,12 +15,92 @@ import { useTotalJobs } from "@/hooks/use-total-jobs"
  * Useful for debugging data persistence issues
  */
 export function JobDataStatus() {
+  const [testLoading, setTestLoading] = useState(false)
+  const [rescrapingLoading, setRescrapingLoading] = useState(false)
+  const [testMessage, setTestMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  const [rescrapingMessage, setRescrapingMessage] = useState<{ text: string; type: "success" | "error" } | null>(null)
+  
   const { data, isLoading, error } = useQuery({
     queryKey: ["job-insights"],
     queryFn: fetchJobInsights,
     refetchInterval: 5000, // Refresh every 5 seconds
   })
   const { totalJobs, source } = useTotalJobs()
+  const queryClient = useQueryClient()
+
+  const handleTestConnections = async () => {
+    setTestLoading(true)
+    setTestMessage(null)
+    try {
+      const response = await fetch("/api/brightdata/test", {
+        method: "POST",
+      })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setTestMessage({
+          text: "✓ All connections are healthy",
+          type: "success",
+        })
+        // Refresh data
+        queryClient.invalidateQueries({ queryKey: ["job-insights"] })
+      } else {
+        setTestMessage({
+          text: `Connection test failed: ${data.error || "Unknown error"}`,
+          type: "error",
+        })
+      }
+    } catch (err) {
+      setTestMessage({
+        text: `Error testing connections: ${err instanceof Error ? err.message : "Unknown error"}`,
+        type: "error",
+      })
+    } finally {
+      setTestLoading(false)
+      setTimeout(() => setTestMessage(null), 5000)
+    }
+  }
+
+  const handleRescrape = async () => {
+    setRescrapingLoading(true)
+    setRescrapingMessage(null)
+    try {
+      const response = await fetch("/api/jobs/scrape", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ queries: [] }), // Empty queries will use defaults
+      })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setRescrapingMessage({
+          text: `✓ Rescrape completed - fetched data from all sources`,
+          type: "success",
+        })
+        // Refresh queries
+        queryClient.invalidateQueries({ queryKey: ["job-insights"] })
+        queryClient.invalidateQueries({ queryKey: ["total-jobs"] })
+        queryClient.invalidateQueries({ queryKey: ["cityJobs"] })
+        queryClient.invalidateQueries({ queryKey: ["allJobPostings"] })
+      } else {
+        setRescrapingMessage({
+          text: `Rescrape failed: ${data.error || "Unknown error"}`,
+          type: "error",
+        })
+      }
+    } catch (err) {
+      setRescrapingMessage({
+        text: `Error rescrabing data: ${err instanceof Error ? err.message : "Unknown error"}`,
+        type: "error",
+      })
+    } finally {
+      setRescrapingLoading(false)
+      setTimeout(() => setRescrapingMessage(null), 5000)
+    }
+  }
+
 
   if (isLoading) {
     return (
@@ -119,6 +201,41 @@ export function JobDataStatus() {
             No jobs found. Run a scrape to populate data.
           </div>
         )}
+
+        {testMessage && (
+          <div className={`rounded p-2 text-xs ${testMessage.type === "success" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
+            {testMessage.text}
+          </div>
+        )}
+
+        {rescrapingMessage && (
+          <div className={`rounded p-2 text-xs ${rescrapingMessage.type === "success" ? "bg-green-50 text-green-700 dark:bg-green-950/20 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400"}`}>
+            {rescrapingMessage.text}
+          </div>
+        )}
+
+        <div className="border-t border-white/20 pt-3 flex flex-col gap-2 sm:flex-row sm:gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleTestConnections}
+            disabled={testLoading}
+            className="flex-1 text-xs rounded-lg"
+          >
+            <Zap className="h-3 w-3 mr-1" />
+            {testLoading ? "Testing..." : "Test Connections"}
+          </Button>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={handleRescrape}
+            disabled={rescrapingLoading}
+            className="flex-1 text-xs rounded-lg"
+          >
+            <RefreshCw className={`h-3 w-3 mr-1 ${rescrapingLoading ? "animate-spin" : ""}`} />
+            {rescrapingLoading ? "Rescrabing..." : "Rescrape Data"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

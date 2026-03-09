@@ -12,7 +12,6 @@ import {
   ShieldAlert,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Role, Skill, Playbook } from "@/services/types"
 import { useAcquiredSkills } from "@/hooks/use-acquired-skills"
@@ -39,15 +38,28 @@ const URGENCY_BADGE: Record<string, string> = {
   stable: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300 dark:border-green-700",
 }
 
-function matchPlaybooks(missingSkillIds: string[], playbooks: Playbook[]): Playbook[] {
+function normalizeSkillKey(value: string): string {
+  return value.toLowerCase().trim().replace(/\s+/g, "-")
+}
+
+function matchPlaybooks(missingSkills: Skill[], playbooks: Playbook[]): Playbook[] {
+  const missingKeys = new Set<string>()
+  for (const skill of missingSkills) {
+    const normalizedId = normalizeSkillKey(skill.id)
+    missingKeys.add(normalizedId)
+    missingKeys.add(normalizeSkillKey(skill.name))
+
+    // Many ids include a sector prefix; keep the trailing part as an alternate key.
+    const idParts = normalizedId.split("-")
+    if (idParts.length > 1) {
+      missingKeys.add(idParts.slice(1).join("-"))
+    }
+  }
+
   return playbooks
     .filter((pb) =>
       pb.linkedSkills.some((ls) =>
-        missingSkillIds.some(
-          (sid) =>
-            ls.toLowerCase().replace(/\s+/g, "-").includes(sid.split("-")[0]) ||
-            sid.includes(ls.toLowerCase().replace(/\s+/g, "-"))
-        )
+        missingKeys.has(normalizeSkillKey(ls))
       )
     )
     .slice(0, 2)
@@ -79,7 +91,7 @@ export function SkillsGapPanel({ roles, skills, playbooks }: SkillsGapPanelProps
           missingSkills: missing,
           coveredSkills: covered,
           coveragePercent,
-          suggestedPlaybooks: matchPlaybooks(missing.map((s) => s.id), playbooks),
+          suggestedPlaybooks: matchPlaybooks(missing, playbooks),
         }
       })
       .filter((g) => g.missingSkills.length > 0)
@@ -90,19 +102,21 @@ export function SkillsGapPanel({ roles, skills, playbooks }: SkillsGapPanelProps
       })
   }, [roles, skillMap, acquired, playbooks])
 
-  const totalRequired = useMemo(() => {
+  const requiredSkillIds = useMemo(() => {
     const ids = new Set<string>()
     for (const role of roles) for (const sid of role.requiredSkills) ids.add(sid)
-    return ids.size
+    return ids
   }, [roles])
+
+  const totalRequired = requiredSkillIds.size
 
   const totalAcquiredCount = useMemo(() => {
     let count = 0
-    for (const role of roles)
-      for (const sid of role.requiredSkills)
-        if (acquired.has(sid)) count++
-    return Math.min(count, totalRequired)
-  }, [roles, acquired, totalRequired])
+    for (const sid of requiredSkillIds) {
+      if (acquired.has(sid)) count++
+    }
+    return count
+  }, [requiredSkillIds, acquired])
 
   const coveragePercent = totalRequired === 0 ? 0 : Math.round((totalAcquiredCount / totalRequired) * 100)
   const criticalGaps = gaps.filter((g) => g.role.urgency === "critical")

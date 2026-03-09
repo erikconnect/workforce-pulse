@@ -78,6 +78,49 @@ export function extractSkills(text: string): string[] {
   return SKILL_DICTIONARY.filter((skill) => lower.includes(skill.toLowerCase()));
 }
 
+function parseRelativePostedDate(input: string): Date | null {
+  const text = input.trim().toLowerCase();
+  if (!text) return null;
+
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  if (text === "today" || text === "just posted" || text === "posted today") {
+    return startOfToday;
+  }
+
+  if (text === "yesterday" || text === "posted yesterday") {
+    const d = new Date(startOfToday);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }
+
+  const relMatch = text.match(/(\d+)\s+(hour|hours|day|days|week|weeks|month|months)\s+ago/);
+  if (!relMatch) return null;
+
+  const amount = Number.parseInt(relMatch[1] ?? "0", 10);
+  const unit = relMatch[2] ?? "day";
+  if (!Number.isFinite(amount) || amount < 0) return null;
+
+  const d = new Date(startOfToday);
+  if (unit.startsWith("hour")) d.setHours(now.getHours() - amount);
+  else if (unit.startsWith("day")) d.setDate(d.getDate() - amount);
+  else if (unit.startsWith("week")) d.setDate(d.getDate() - amount * 7);
+  else if (unit.startsWith("month")) d.setMonth(d.getMonth() - amount);
+  return d;
+}
+
+function toIsoDate(input?: string): string {
+  if (!input) return new Date().toISOString();
+
+  const relative = parseRelativePostedDate(input);
+  if (relative) return relative.toISOString();
+
+  const parsed = new Date(input);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
 // ---------------------------------------------------------------------------
 // Raw Bright Data Indeed record → normalized JobPosting
 // ---------------------------------------------------------------------------
@@ -101,20 +144,21 @@ export interface RawIndeedRecord {
 }
 
 export function normalizeIndeedRecord(raw: RawIndeedRecord): JobPosting {
-  const title = raw.title ?? "";
-  const description = raw.description ?? raw.job_description ?? "";
+  const title = raw.title?.trim() || "Untitled Role";
+  const description = raw.description?.trim() || raw.job_description?.trim() || title;
+  const id = raw.id ?? raw.job_id ?? crypto.randomUUID();
   const sectorId = classifySector(title, description);
   const extractedSkills = extractSkills(description);
 
   return {
-    id: raw.id ?? raw.job_id ?? crypto.randomUUID(),
+    id,
     title,
-    org: raw.company_name ?? raw.company ?? "Unknown",
-    location: raw.location ?? "Montgomery, AL",
-    postedDate: raw.date_posted ?? new Date().toISOString(),
+    org: raw.company_name?.trim() || raw.company?.trim() || "Unknown",
+    location: raw.location?.trim() || "Montgomery, AL",
+    postedDate: toIsoDate(raw.date_posted),
     description,
     source: "indeed",
-    url: raw.url ?? raw.job_url ?? "",
+    url: raw.url?.trim() || raw.job_url?.trim() || `https://www.indeed.com/viewjob?jk=${id}`,
     sectorId,
     extractedSkills,
     salary: raw.salary,
@@ -227,20 +271,21 @@ export function normalizeUsaJobsRecord(raw: RawUsaJobsRecord): JobPosting {
 }
 
 export function normalizeLinkedInRecord(raw: RawLinkedInRecord): JobPosting {
-  const title = raw.title ?? "";
-  const description = raw.description ?? "";
+  const title = raw.title?.trim() || "Untitled Role";
+  const description = raw.description?.trim() || title;
+  const id = raw.job_id ?? crypto.randomUUID();
   const sectorId = classifySector(title, description);
   const extractedSkills = extractSkills(description);
 
   return {
-    id: raw.job_id ?? crypto.randomUUID(),
+    id,
     title,
-    org: raw.company_name ?? "Unknown",
-    location: raw.location ?? "Montgomery, AL",
-    postedDate: raw.date_posted ?? raw.date ?? new Date().toISOString(),
+    org: raw.company_name?.trim() || "Unknown",
+    location: raw.location?.trim() || "Montgomery, AL",
+    postedDate: toIsoDate(raw.date_posted ?? raw.date),
     description,
     source: "linkedin",
-    url: raw.url ?? "",
+    url: raw.url?.trim() || `https://www.linkedin.com/jobs/view/${id}`,
     sectorId,
     extractedSkills,
     jobType: raw.employment_type,
@@ -248,20 +293,21 @@ export function normalizeLinkedInRecord(raw: RawLinkedInRecord): JobPosting {
 }
 
 export function normalizeGlassdoorRecord(raw: RawGlassdoorRecord): JobPosting {
-  const title = raw.title ?? "";
-  const description = raw.description ?? "";
+  const title = raw.title?.trim() || "Untitled Role";
+  const description = raw.description?.trim() || title;
+  const id = raw.job_id ?? raw.id ?? crypto.randomUUID();
   const sectorId = classifySector(title, description);
   const extractedSkills = extractSkills(description);
 
   return {
-    id: raw.job_id ?? raw.id ?? crypto.randomUUID(),
+    id,
     title,
-    org: raw.company_name ?? raw.company ?? "Unknown",
-    location: raw.location ?? "Montgomery, AL",
-    postedDate: raw.date_posted ?? raw.date ?? new Date().toISOString(),
+    org: raw.company_name?.trim() || raw.company?.trim() || "Unknown",
+    location: raw.location?.trim() || "Montgomery, AL",
+    postedDate: toIsoDate(raw.date_posted ?? raw.date),
     description,
     source: "glassdoor",
-    url: raw.url ?? "",
+    url: raw.url?.trim() || `https://www.glassdoor.com/job-listing/JL_KQ0,${id}.htm`,
     sectorId,
     extractedSkills,
     salary: raw.salary,
@@ -276,6 +322,43 @@ export function normalizeGlassdoorRecord(raw: RawGlassdoorRecord): JobPosting {
 export function deriveInsights(postings: JobPosting[]): JobInsights {
   const totalPostings = postings.length;
   const lastUpdated = new Date().toISOString();
+  const timelineDays = 30;
+  const criticalWindowDays = 14;
+
+  function toDayKey(value: unknown): string | null {
+    if (!value) return null;
+    if (typeof value === "string") {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+    }
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+    }
+    const parsed = new Date(String(value));
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+  }
+
+  function toDate(value: unknown): Date | null {
+    if (!value) return null;
+    const parsed = new Date(String(value));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const now = new Date();
+  const timelineStart = new Date(now);
+  timelineStart.setDate(timelineStart.getDate() - (timelineDays - 1));
+  timelineStart.setHours(0, 0, 0, 0);
+
+  const criticalWindowStart = new Date(now);
+  criticalWindowStart.setDate(criticalWindowStart.getDate() - (criticalWindowDays - 1));
+  criticalWindowStart.setHours(0, 0, 0, 0);
+
+  const timelineDates = Array.from({ length: timelineDays }, (_, idx) => {
+    const d = new Date(timelineStart);
+    d.setDate(timelineStart.getDate() + idx);
+    return d.toISOString().slice(0, 10);
+  });
+  const timelineDateSet = new Set(timelineDates);
 
   // --- Top roles ---
   const roleMap = new Map<string, { count: number; sectorId: string | null }>();
@@ -325,24 +408,24 @@ export function deriveInsights(postings: JobPosting[]): JobInsights {
     .map(([sectorId, count]) => ({ sectorId, count, percentChange: 0 }));
 
   // --- Critical roles count (Public Safety) ---
-  const criticalRolesCount = postings.filter(
-    (p) => p.sectorId === "public-safety"
-  ).length;
+  const criticalRolesCount = postings.filter((p) => {
+    if (p.sectorId !== "public-safety") return false;
+    const posted = toDate(p.postedDate);
+    return posted ? posted >= criticalWindowStart : false;
+  }).length;
 
   // --- Postings by day (last 30 days) ---
   const dayMap = new Map<string, number>();
   for (const p of postings) {
-    const day = p.postedDate.slice(0, 10); // "YYYY-MM-DD"
+    const day = toDayKey(p.postedDate);
+    if (!day) continue;
+    if (!timelineDateSet.has(day)) continue;
     dayMap.set(day, (dayMap.get(day) ?? 0) + 1);
   }
-  const timelineDates = Array.from(dayMap.keys())
-    .sort((a, b) => a.localeCompare(b))
-    .slice(-30);
-
-  const postingsByDay = Array.from(dayMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-30)
-    .map(([date, count]) => ({ date, count }));
+  const postingsByDay = timelineDates.map((date) => ({
+    date,
+    count: dayMap.get(date) ?? 0,
+  }));
 
   const sectorDayMap = new Map<string, Map<string, number>>();
   const skillDayMap = new Map<string, Map<string, number>>();
@@ -350,7 +433,9 @@ export function deriveInsights(postings: JobPosting[]): JobInsights {
   const topSkillNames = new Set(topSkills.slice(0, 6).map((skill) => skill.name));
 
   for (const posting of postings) {
-    const day = posting.postedDate.slice(0, 10);
+    const day = toDayKey(posting.postedDate);
+    if (!day) continue;
+    if (!timelineDateSet.has(day)) continue;
 
     if (posting.sectorId) {
       const sectorSeries = sectorDayMap.get(posting.sectorId) ?? new Map<string, number>();

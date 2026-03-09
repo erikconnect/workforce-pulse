@@ -737,13 +737,13 @@ export default function MissionsPage() {
       </div>
 
       <div className="glass-panel flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/35 px-4 py-3 dark:border-white/10">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full items-center gap-2 overflow-x-auto sm:w-auto">
           {STATUS_FILTER_LABELS.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setStatusFilter(value)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
                 statusFilter === value
                   ? "border-primary/30 bg-primary/10 text-primary"
                   : "border-transparent bg-white/25 text-muted-foreground hover:border-white/15 hover:bg-white/40 hover:text-foreground dark:bg-white/5 dark:hover:border-white/10 dark:hover:bg-white/10"
@@ -771,7 +771,7 @@ export default function MissionsPage() {
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h3 className="text-lg font-semibold">Mission board</h3>
             <p className="text-sm text-muted-foreground">
@@ -779,7 +779,7 @@ export default function MissionsPage() {
             </p>
           </div>
           {memberProfile && (
-            <Badge variant="primary">
+            <Badge variant="primary" className="self-start sm:self-auto">
               <Trophy className="mr-1 h-3 w-3" />
               {memberProfile.points} pts
             </Badge>

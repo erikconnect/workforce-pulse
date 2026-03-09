@@ -284,7 +284,7 @@ export default function MapPage() {
             </div>
 
             {isAdmin && (
-              <div className="grid min-w-[250px] flex-1 gap-3 sm:grid-cols-3 xl:max-w-[430px] xl:grid-cols-1">
+              <div className="grid w-full min-w-0 gap-3 sm:grid-cols-3 xl:max-w-[430px] xl:grid-cols-1">
                 {citySignals.map((signal) => (
                   <div
                     key={signal.label}

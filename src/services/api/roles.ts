@@ -15,18 +15,27 @@ function inferUrgency(openCount: number): "critical" | "watch" | "stable" {
   return "stable";
 }
 
-function mapTopRoles(topRoles: Array<{ title: string; count: number; sectorId: string | null }>): Role[] {
+function mapTopRoles(topRoles: Array<{ title: string; count: number; sectorId: string | null; requiredSkills?: string[] }>): Role[] {
   return topRoles
     .filter((role) => Boolean(role.sectorId))
-    .map((role, index) => ({
-      id: `${role.sectorId}-role-${index + 1}`,
-      title: role.title,
-      sectorId: role.sectorId as string,
-      openCount: role.count,
-      urgency: inferUrgency(role.count),
-      requiredSkills: [],
-      avgTimeToFill: 30,
-    }));
+    .map((role) => {
+      // Normalize title to match backend generation
+      const normalizedTitle = role.title.toLowerCase()
+        .replace(/[/:()]/g, '-')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      return {
+        id: `${role.sectorId}-${normalizedTitle}`,
+        title: role.title,
+        sectorId: role.sectorId as string,
+        openCount: role.count,
+        urgency: inferUrgency(role.count),
+        requiredSkills: role.requiredSkills || [],
+        avgTimeToFill: 30,
+      };
+    });
 }
 
 export async function fetchRoles(): Promise<Role[]> {

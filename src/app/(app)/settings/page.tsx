@@ -543,29 +543,29 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className={cn("grid w-full gap-1", isAdmin ? "grid-cols-6" : "grid-cols-2 sm:grid-cols-5")}>
-          <TabsTrigger value="profile" className="gap-2">
+        <TabsList className="flex w-full justify-start gap-1 overflow-x-auto">
+          <TabsTrigger value="profile" className="shrink-0 gap-2">
             <User className="h-4 w-4" />
             Profile
           </TabsTrigger>
-          <TabsTrigger value="account" className="gap-2">
+          <TabsTrigger value="account" className="shrink-0 gap-2">
             <Shield className="h-4 w-4" />
             Account
           </TabsTrigger>
-          <TabsTrigger value="points" className="gap-2">
+          <TabsTrigger value="points" className="shrink-0 gap-2">
             <Trophy className="h-4 w-4" />
             Points
           </TabsTrigger>
-          <TabsTrigger value="benefits" className="gap-2">
+          <TabsTrigger value="benefits" className="shrink-0 gap-2">
             <Gift className="h-4 w-4" />
             Benefits
           </TabsTrigger>
-          <TabsTrigger value="preferences" className="gap-2">
+          <TabsTrigger value="preferences" className="shrink-0 gap-2">
             <Bell className="h-4 w-4" />
             Notifications
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="integrations" className="gap-2">
+            <TabsTrigger value="integrations" className="shrink-0 gap-2">
               <Plug className="h-4 w-4" />
               Integrations
             </TabsTrigger>

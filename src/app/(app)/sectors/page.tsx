@@ -211,27 +211,27 @@ export default function SectorsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="glass-card-strong card-hover-lift overflow-hidden rounded-[30px] border border-white/40 p-6 dark:border-white/10">
-          <div className="flex items-start justify-between gap-4">
-            <div className="max-w-2xl">
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr] xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="glass-card-strong card-hover-lift overflow-hidden rounded-[30px] border border-white/40 p-4 sm:p-6 dark:border-white/10">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+            <div className="w-full sm:max-w-2xl">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Badge variant="primary">
                   Sector intelligence
                 </Badge>
-                <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+                <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[11px] sm:text-xs">
                   {sectors?.length ?? 0} sectors tracked
                 </Badge>
               </div>
-              <h2 className="text-3xl font-bold tracking-tight">Sectors</h2>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Sectors</h2>
+              <p className="mt-2 max-w-xl text-xs sm:text-sm text-muted-foreground">
                 Monitor workforce health across Montgomery&apos;s major sectors, surface where hiring pressure is building, and compare operational demand before it becomes a staffing bottleneck.
               </p>
             </div>
             <Button
               variant={isComparing ? "default" : "outline"}
               size="sm"
-              className="gap-1.5 rounded-xl"
+              className="gap-1.5 rounded-xl w-full sm:w-auto"
               onClick={() => {
                 setCompareMode((prev) => {
                   const next = !prev
@@ -253,37 +253,40 @@ export default function SectorsPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[10px] sm:text-xs">
               <Users className="mr-1 h-3 w-3" />
-              {(totalEmployees / 1000).toFixed(0)}K workforce
+              <span className="hidden xs:inline">{(totalEmployees / 1000).toFixed(0)}K workforce</span>
+              <span className="xs:hidden">{(totalEmployees / 1000).toFixed(0)}K</span>
             </Badge>
-            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[10px] sm:text-xs">
               <Briefcase className="mr-1 h-3 w-3" />
-              {totalOpenRoles.toLocaleString()} open roles
+              <span className="hidden xs:inline">{totalOpenRoles.toLocaleString()} open roles</span>
+              <span className="xs:hidden">{totalOpenRoles}</span>
             </Badge>
-            <Badge variant="outline" className="border-red-300/70 bg-red-50/70 text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+            <Badge variant="outline" className="border-red-300/70 bg-red-50/70 text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300 text-[10px] sm:text-xs">
               <ShieldAlert className="mr-1 h-3 w-3" />
               {criticalCount} critical
             </Badge>
-            <Badge variant="outline" className="border-emerald-300/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300">
+            <Badge variant="outline" className="border-emerald-300/70 bg-emerald-50/70 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300 text-[10px] sm:text-xs">
               <Activity className="mr-1 h-3 w-3" />
               {stableCount} stable
             </Badge>
-            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[10px] sm:text-xs hidden md:inline-flex">
               {watchCount} watch
             </Badge>
-            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
-              {(workersInCriticalSectors / 1000).toFixed(0)}K exposed workers
+            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[10px] sm:text-xs">
+              <span className="hidden xs:inline">{(workersInCriticalSectors / 1000).toFixed(0)}K exposed</span>
+              <span className="xs:hidden">{(workersInCriticalSectors / 1000).toFixed(0)}K</span>
             </Badge>
           </div>
 
-          <div className="mt-4 rounded-[24px] border border-white/30 bg-white/30 p-4 dark:border-white/10 dark:bg-white/5">
-            <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mt-4 rounded-[24px] border border-white/30 bg-white/30 p-3 sm:p-4 dark:border-white/10 dark:bg-white/5">
+            <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Highest-demand jobs</p>
-                <p className="mt-1 text-sm font-semibold">Top roles driving current pressure</p>
+                <p className="mt-1 text-xs sm:text-sm font-semibold">Top roles driving current pressure</p>
               </div>
-              <Badge variant="primary">
+              <Badge variant="primary" className="text-[11px] sm:text-xs">
                 {topDemandRoles.length} roles
               </Badge>
             </div>
@@ -291,13 +294,13 @@ export default function SectorsPage() {
               {topDemandRoles.map((role) => (
                 <div
                   key={role.id}
-                  className="flex items-center justify-between rounded-2xl bg-white/45 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/60 dark:bg-white/6 dark:hover:bg-white/10"
+                  className="flex flex-col xs:flex-row items-start xs:items-center justify-between rounded-2xl bg-white/45 px-3 py-2 xs:py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/60 dark:bg-white/6 dark:hover:bg-white/10 gap-2"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{role.title}</p>
-                    <p className="text-xs text-muted-foreground">{role.sectorName} · avg {role.avgTimeToFill}d to fill</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs sm:text-sm font-semibold">{role.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{role.sectorName} · avg {role.avgTimeToFill}d to fill</p>
                   </div>
-                  <div className="ml-3 flex items-center gap-2">
+                  <div className="ml-0 xs:ml-3 flex items-center gap-2 flex-shrink-0">
                     <Badge
                       variant="outline"
                       className={cn(
@@ -311,7 +314,7 @@ export default function SectorsPage() {
                     >
                       {role.openCount} open
                     </Badge>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ArrowUpRight className="h-3 w-3 text-muted-foreground" />
                   </div>
                 </div>
               ))}
@@ -319,26 +322,26 @@ export default function SectorsPage() {
           </div>
         </div>
 
-        <div className="glass-panel card-hover-lift rounded-[30px] border border-white/35 p-5 dark:border-white/10">
+        <div className="glass-panel card-hover-lift rounded-[30px] border border-white/35 p-4 sm:p-5 dark:border-white/10">
           <div className="mb-3 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
             <h3 className="text-sm font-semibold">Executive Signals</h3>
           </div>
           {sectors ? (
             <div className="space-y-4">
               {memberProfile && (
                 <>
-                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">Sector points</p>
-                    <p className="mt-1 text-2xl font-semibold text-primary">{memberProfile.sectorPoints} pts</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {memberProfile.sectorActionsCompleted} actions: compare, monitor, strategize.
+                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3 transition-all hover:border-primary/40 hover:bg-primary/15">
+                    <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/80">📊 Sector points</p>
+                    <p className="mt-2 text-2xl sm:text-3xl font-bold text-primary">{memberProfile.sectorPoints}</p>
+                    <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">
+                      {memberProfile.sectorActionsCompleted} actions completed
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Earn points</p>
-                    <div className="mt-1 space-y-1 text-xs text-muted-foreground">
-                      <p>Sector comparison: +12 pts</p>
+                  <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5 hover:bg-white/45 dark:hover:bg-white/8 transition-colors">
+                    <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">💡 Quick win</p>
+                    <div className="mt-1 space-y-1 text-[10px] sm:text-xs text-muted-foreground">
+                      <p>Compare 2 sectors: <span className="font-semibold text-foreground">+12 pts</span></p>
                     </div>
                   </div>
                 </>
@@ -347,25 +350,25 @@ export default function SectorsPage() {
                 <SectorRadar sectors={sectors} />
               </div>
               <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Highest pressure</p>
-                  <p className="mt-1 text-sm font-semibold">{topCriticalSector?.name ?? "No critical sector"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {topCriticalSector ? `${topCriticalSector.openRolesCount} open roles.` : "Critical risk is contained."}
+                <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5 hover:bg-white/45 dark:hover:bg-white/8 transition-all duration-200">
+                  <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">⚠️ Highest pressure</p>
+                  <p className="mt-1 text-xs sm:text-sm font-semibold truncate">{topCriticalSector?.name ?? "No critical"}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {topCriticalSector ? `${topCriticalSector.openRolesCount} open roles` : "Contained."}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Fastest weekly rise</p>
-                  <p className="mt-1 text-sm font-semibold">{fastestRisingSector?.name ?? "—"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {fastestRisingSector ? `${fastestRisingSector.kpis.find((kpi) => kpi.label === "WoW Change")?.value ?? "0%"}.` : "Trend data loading."}
+                <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5 hover:bg-white/45 dark:hover:bg-white/8 transition-all duration-200">
+                  <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">📈 Fastest rise</p>
+                  <p className="mt-1 text-xs sm:text-sm font-semibold truncate">{fastestRisingSector?.name ?? "—"}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {fastestRisingSector ? `${fastestRisingSector.kpis.find((kpi) => kpi.label === "WoW Change")?.value ?? "0%"}` : "Loading..."}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Most stable baseline</p>
-                  <p className="mt-1 text-sm font-semibold">{healthiestSector?.name ?? "—"}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {healthiestSector ? `Pulse ${healthiestSector.pulseScore}.` : "Baseline loading."}
+                <div className="rounded-2xl bg-white/35 p-3 dark:bg-white/5 hover:bg-white/45 dark:hover:bg-white/8 transition-all duration-200">
+                  <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">✓ Most stable</p>
+                  <p className="mt-1 text-xs sm:text-sm font-semibold truncate">{healthiestSector?.name ?? "—"}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {healthiestSector ? `Pulse ${healthiestSector.pulseScore}` : "Loading..."}
                   </p>
                 </div>
               </div>
@@ -377,18 +380,18 @@ export default function SectorsPage() {
       </div>
 
       {/* Filters + Sort */}
-      <div className="glass-panel flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-white/35 p-3 dark:border-white/10">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
+      <div className="glass-panel flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3 rounded-[24px] border border-white/35 p-3 dark:border-white/10">
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:min-w-[240px] sm:flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search sectors, skills, or workforce signals..."
-              className="h-9 rounded-xl border-input/70 bg-white/30 pl-9 text-sm dark:bg-white/5"
+              placeholder="Search sectors, skills..."
+              className="h-9 w-full rounded-xl border-input/70 bg-white/30 pl-9 text-xs sm:text-sm dark:bg-white/5"
             />
           </div>
-          <div className="flex items-center gap-1 rounded-2xl border border-input/70 bg-white/30 p-1 dark:bg-white/5">
+          <div className="flex items-center gap-1 rounded-2xl border border-input/70 bg-white/30 p-1 dark:bg-white/5 w-full sm:w-auto overflow-x-auto">
           {([
             { value: "all" as const, label: "All" },
             { value: "critical" as const, label: "Critical" },
@@ -399,7 +402,7 @@ export default function SectorsPage() {
               key={value}
               onClick={() => setStatusFilter(value)}
               className={cn(
-                "rounded px-3 py-1 text-xs font-medium transition-colors",
+                "rounded px-2 sm:px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap",
                 statusFilter === value
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -410,10 +413,10 @@ export default function SectorsPage() {
           ))}
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-              <SelectTrigger className="h-8 w-[170px] rounded-xl bg-white/30 text-xs dark:bg-white/5">
+              <SelectTrigger className="h-8 w-full sm:w-[170px] rounded-xl bg-white/30 text-xs dark:bg-white/5">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -425,23 +428,23 @@ export default function SectorsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[10px] sm:text-xs">
             {filtered.length} visible
           </Badge>
           {statusFilter !== "all" && (
-            <Badge variant="primary">
+            <Badge variant="primary" className="text-[10px] sm:text-xs">
               Filter: {statusFilter}
             </Badge>
           )}
           {search.trim() && (
-            <Badge variant="primary">
+            <Badge variant="primary" className="text-[10px] sm:text-xs hidden xs:inline-flex">
               Search: {search.trim()}
             </Badge>
           )}
           {isComparing && (
-            <Badge variant="primary">
-              Compare mode
+            <Badge variant="primary" className="text-[10px] sm:text-xs">
+              Compare
             </Badge>
           )}
         </div>
@@ -469,22 +472,22 @@ export default function SectorsPage() {
       )}
 
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
           <div>
-            <h3 className="text-lg font-semibold">Sector Portfolio</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="text-base sm:text-lg font-semibold">Sector Portfolio</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Review sector health, demand movement, and training linkage across Montgomery.
             </p>
           </div>
           {fastestRisingSector && (
-            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5 text-[10px] sm:text-xs">
               <TrendingUp className="mr-1 h-3 w-3" />
-              Fastest rise: {fastestRisingSector.name}
+              <span className="hidden xs:inline">Fastest rise:</span> {fastestRisingSector.name}
             </Badge>
           )}
         </div>
 
-        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 items-stretch gap-3 sm:gap-4 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
         {isLoading
           ? [...Array(8)].map((_, i) => <SectorCardSkeleton key={i} />)
           : filtered.map((sector) => (

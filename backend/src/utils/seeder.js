@@ -5,8 +5,12 @@
 
 import Sector from '../models/Sector.js';
 import Skill from '../models/Skill.js';
+import Mission from '../models/Mission.js';
+import Playbook from '../models/Playbook.js';
 import { sectorsSeed } from '../seeds/sectors.seed.js';
 import { skillsSeed } from '../seeds/skills.seed.js';
+import { missionsSeed } from '../seeds/missions.seed.js';
+import { playbooksSeed } from '../seeds/playbooks.seed.js';
 
 export async function seedDatabase() {
   try {
@@ -30,6 +34,26 @@ export async function seedDatabase() {
       console.log(`[Seeder] ✅ Inserted ${skillsSeed.length} skills`);
     } else {
       console.log(`[Seeder] ℹ️  Skills already exist (${skillCount} documents)`);
+    }
+
+    // Check if missions collection is empty
+    const missionCount = await Mission.countDocuments();
+    if (missionCount === 0) {
+      console.log('[Seeder] 🌱 Seeding missions...');
+      await Mission.insertMany(missionsSeed);
+      console.log(`[Seeder] ✅ Inserted ${missionsSeed.length} missions`);
+    } else {
+      console.log(`[Seeder] ℹ️  Missions already exist (${missionCount} documents)`);
+    }
+
+    // Check if playbooks collection is empty
+    const playbookCount = await Playbook.countDocuments();
+    if (playbookCount === 0) {
+      console.log('[Seeder] 🌱 Seeding playbooks...');
+      await Playbook.insertMany(playbooksSeed);
+      console.log(`[Seeder] ✅ Inserted ${playbooksSeed.length} playbooks`);
+    } else {
+      console.log(`[Seeder] ℹ️  Playbooks already exist (${playbookCount} documents)`);
     }
 
     console.log('[Seeder] 🎉 Database initialization complete');

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// ArcGIS layer name → env var URL mapping
-const LAYER_MAP: Record<string, string | undefined> = {
-  "911-calls": process.env.NEXT_PUBLIC_ARCGIS_911_URL,
-  stations: process.env.NEXT_PUBLIC_ARCGIS_STATIONS_URL,
-  permits: process.env.NEXT_PUBLIC_ARCGIS_PERMITS_URL,
-  education: process.env.NEXT_PUBLIC_ARCGIS_EDUCATION_URL,
-  population: process.env.NEXT_PUBLIC_ARCGIS_POPULATION_URL,
+// ArcGIS layer name → (base URL + layer ID) mapping
+const LAYER_MAP: Record<string, { baseUrl: string; layerId: number }> = {
+  "911-calls": { baseUrl: process.env.NEXT_PUBLIC_ARCGIS_911_URL || "", layerId: 0 },
+  stations: { baseUrl: process.env.NEXT_PUBLIC_ARCGIS_STATIONS_URL || "", layerId: 3 }, // Fire+Police is layer 3
+  permits: { baseUrl: process.env.NEXT_PUBLIC_ARCGIS_PERMITS_URL || "", layerId: 0 },
+  education: { baseUrl: process.env.NEXT_PUBLIC_ARCGIS_EDUCATION_URL || "", layerId: 0 },
+  population: { baseUrl: process.env.NEXT_PUBLIC_ARCGIS_POPULATION_URL || "", layerId: 0 },
 }
 
 // Cache responses for 1 hour
@@ -16,11 +16,10 @@ const ARCGIS_PAGE_SIZE = 1000
 const ARCGIS_MAX_FEATURES = 15000
 
 function normalizeArcgisLayerUrl(rawUrl: string) {
+  // Remove trailing slash and any existing layer ID
   const trimmed = rawUrl.trim().replace(/\/$/, "")
-  const featureServerMatch = trimmed.match(/\/FeatureServer(?:\/(\d+))?$/i)
-  if (!featureServerMatch) return trimmed
-  const hasLayerId = featureServerMatch[1] != null
-  return hasLayerId ? trimmed : `${trimmed}/0`
+  // Strip any existing layer ID (e.g., /FeatureServer/0 -> /FeatureServer)
+  return trimmed.replace(/\/FeatureServer\/\d+$/i, "/FeatureServer")
 }
 
 export async function GET(
@@ -29,19 +28,20 @@ export async function GET(
 ) {
   const { layer } = await params
   const layerKey = layer
-  const baseUrl = LAYER_MAP[layerKey]
+  const layerConfig = LAYER_MAP[layerKey]
 
-  if (!baseUrl) {
+  if (!layerConfig?.baseUrl) {
     return NextResponse.json(
       { error: `Unknown layer: ${layerKey}. Available: ${Object.keys(LAYER_MAP).join(", ")}` },
       { status: 400 }
     )
   }
 
-  const queryBase = normalizeArcgisLayerUrl(baseUrl)
+  const queryBase = normalizeArcgisLayerUrl(layerConfig.baseUrl)
+  const layerUrl = `${queryBase}/${layerConfig.layerId}`
 
   const buildQueryUrl = (offset: number) =>
-    `${queryBase}/query?where=1%3D1&outFields=*&returnGeometry=true&resultRecordCount=${ARCGIS_PAGE_SIZE}&resultOffset=${offset}&f=geojson`
+    `${layerUrl}/query?where=1=1&outFields=*&returnGeometry=true&resultRecordCount=${ARCGIS_PAGE_SIZE}&resultOffset=${offset}&f=geojson`
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 15_000)

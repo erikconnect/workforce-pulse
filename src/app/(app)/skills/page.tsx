@@ -512,7 +512,7 @@ export default function SkillsPage() {
 
       <div className="glass-panel flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-white/35 p-3 dark:border-white/10">
         <div className="flex flex-wrap gap-3">
-          <div className="relative min-w-[220px] max-w-sm flex-1">
+          <div className="relative w-full min-w-0 sm:min-w-[220px] sm:max-w-sm sm:flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search skills..."
@@ -523,7 +523,7 @@ export default function SkillsPage() {
           </div>
 
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-[200px] rounded-xl bg-white/30 dark:bg-white/5">
+            <SelectTrigger className="w-full sm:w-[200px] rounded-xl bg-white/30 dark:bg-white/5">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -533,13 +533,13 @@ export default function SkillsPage() {
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-1 rounded-2xl border border-input/70 bg-white/30 p-1 dark:bg-white/5">
+          <div className="flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-input/70 bg-white/30 p-1 sm:w-auto dark:bg-white/5">
             {DEMAND_LEVELS.map(({ value, label }) => (
               <button
                 key={value}
                 onClick={() => setDemandLevel(value)}
                 className={cn(
-                  "rounded px-3 py-1 text-xs font-medium transition-colors",
+                  "whitespace-nowrap rounded px-3 py-1 text-xs font-medium transition-colors",
                   demandLevel === value
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -585,7 +585,7 @@ export default function SkillsPage() {
             </p>
           </div>
           {topGrowthSkill && (
-            <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+            <Badge variant="outline" className="hidden border-white/35 bg-white/40 text-foreground/80 sm:inline-flex dark:border-white/10 dark:bg-white/5">
               <Link2 className="mr-1 h-3 w-3" />
               Top growth: {topGrowthSkill.name}
             </Badge>

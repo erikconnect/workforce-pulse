@@ -70,7 +70,7 @@ export default function SectorDetailPage() {
             <Skeleton className="h-5 w-20" />
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-64 w-full" />
@@ -257,7 +257,7 @@ export default function SectorDetailPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {sector.kpis.map((kpi) => (
           <Card key={kpi.label} className="glass-panel card-hover-lift border-white/35 dark:border-white/10">
             <CardContent className="pt-4 pb-3">
@@ -278,8 +278,8 @@ export default function SectorDetailPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DetailTab)}>
         <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="roles">
+          <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
+          <TabsTrigger value="roles" className="shrink-0">
             Roles
             {sector.criticalRoles.length > 0 && (
               <span className="ml-1.5 text-xs bg-muted rounded px-1">
@@ -287,7 +287,7 @@ export default function SectorDetailPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="skills">
+          <TabsTrigger value="skills" className="shrink-0">
             Skills
             {sector.skills.length > 0 && (
               <span className="ml-1.5 text-xs bg-muted rounded px-1">
@@ -295,7 +295,7 @@ export default function SectorDetailPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="missions">
+          <TabsTrigger value="missions" className="shrink-0">
             Missions
             {sector.missions.length > 0 && (
               <span className="ml-1.5 text-xs bg-muted rounded px-1">
@@ -303,7 +303,7 @@ export default function SectorDetailPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="playbooks">
+          <TabsTrigger value="playbooks" className="shrink-0">
             Playbooks
             {sector.playbooks.length > 0 && (
               <span className="ml-1.5 text-xs bg-muted rounded px-1">

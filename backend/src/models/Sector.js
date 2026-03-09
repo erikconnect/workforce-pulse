@@ -26,11 +26,13 @@ const sectorSchema = new mongoose.Schema({
     min: 0,
     max: 100,
     default: 50,
+    index: true,
   },
   status: {
     type: String,
     enum: ['critical', 'watch', 'stable'],
     default: 'stable',
+    index: true,
   },
   kpis: [sectorKpiSchema],
   sparklineData: [Number],
@@ -41,8 +43,13 @@ const sectorSchema = new mongoose.Schema({
   openRolesCount: {
     type: Number,
     default: 0,
+    index: true,
   },
   description: String,
+  lastCalculated: {
+    type: Date,
+    default: Date.now,
+  },
 }, {
   timestamps: true,
 });

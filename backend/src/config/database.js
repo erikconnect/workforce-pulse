@@ -3,8 +3,12 @@ import mongoose from 'mongoose';
 export const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/workforce-pulse';
-    
-    await mongoose.connect(mongoURI);
+
+    mongoose.set('bufferCommands', false);
+    await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 5000,
+      autoIndex: true,
+    });
     
     console.log('✅ MongoDB connected successfully');
     console.log(`📊 Database: ${mongoose.connection.name}`);
@@ -19,6 +23,7 @@ export const connectDB = async () => {
     
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error);
+    console.error('ℹ️ Ensure MongoDB is running and reachable at:', process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/workforce-pulse');
     process.exit(1);
   }
 };

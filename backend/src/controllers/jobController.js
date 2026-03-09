@@ -1,4 +1,5 @@
 import JobPosting from '../models/JobPosting.js';
+import CacheMetadata from '../models/CacheMetadata.js';
 
 // Get all job postings with filters
 export const getJobs = async (req, res, next) => {
@@ -45,13 +46,49 @@ export const getJobInsights = async (req, res, next) => {
   try {
     const totalPostings = await JobPosting.countDocuments();
     
-    // Top roles
-    const topRoles = await JobPosting.aggregate([
-      { $group: { _id: '$title', count: { $sum: 1 }, sectorId: { $first: '$sectorId' } } },
+    // Top roles with extracted skills
+    const topRolesRaw = await JobPosting.aggregate([
+      { $group: { 
+        _id: '$title', 
+        count: { $sum: 1 }, 
+        sectorId: { $first: '$sectorId' },
+        allSkills: { $push: '$extractedSkills' }
+      }},
       { $sort: { count: -1 } },
       { $limit: 10 },
-      { $project: { title: '$_id', count: 1, sectorId: 1, _id: 0 } },
     ]);
+
+    // Process top roles to include requiredSkills
+    const topRoles = topRolesRaw.map(role => {
+      // Flatten and count skill occurrences across all jobs for this role
+      const skillFreq = {};
+      for (const skillsArray of role.allSkills) {
+        if (Array.isArray(skillsArray)) {
+          for (const skill of skillsArray) {
+            skillFreq[skill] = (skillFreq[skill] || 0) + 1;
+          }
+        }
+      }
+
+      // Get top 5 most frequent skills for this role (appearing in at least 20% of jobs)
+      const threshold = Math.max(1, Math.ceil(role.count * 0.2));
+      const requiredSkills = Object.entries(skillFreq)
+        .filter(([_, count]) => count >= threshold)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([skill]) => skill.toLowerCase()
+          .replace(/[/:()]/g, '-')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, ''));
+
+      return {
+        title: role._id,
+        count: role.count,
+        sectorId: role.sectorId,
+        requiredSkills,
+      };
+    });
 
     // Top skills
     const topSkills = await JobPosting.aggregate([
@@ -135,22 +172,143 @@ export const bulkUpsertJobs = async (req, res, next) => {
       });
     }
 
-    const bulkOps = jobs.map(job => ({
-      updateOne: {
-        filter: { id: job.id },
-        update: { $set: job },
-        upsert: true,
-      },
-    }));
+    const now = new Date();
+    const newJobIds = new Set(jobs.map(j => j.id));
+    
+    // Find which jobs already exist
+    const existingJobs = await JobPosting.find({ id: { $in: Array.from(newJobIds) } });
+    const existingIds = new Set(existingJobs.map(j => j.id));
+    
+    // Build bulk operations with proper tracking
+    const bulkOps = jobs.map(job => {
+      const isNew = !existingIds.has(job.id);
+      
+      return {
+        updateOne: {
+          filter: { id: job.id },
+          update: isNew 
+            ? {
+                $set: {
+                  ...job,
+                  firstScrapedAt: now,
+                  lastScrapedAt: now,
+                  scrapedCount: 1,
+                  isActive: true,
+                }
+              }
+            : {
+                $set: {
+                  ...job,
+                  lastScrapedAt: now,
+                  isActive: true,
+                },
+                $inc: { scrapedCount: 1 },
+              },
+          upsert: true,
+        },
+      };
+    });
 
     const result = await JobPosting.bulkWrite(bulkOps);
+    
+    // upsertedCount = newly inserted; matchedCount = existing documents seen again
+    const newCount = result.upsertedCount;
+    const updatedCount = result.matchedCount;
+
+    // Touch cache to mark jobs as fresh
+    const totalJobs = await JobPosting.countDocuments();
+    await CacheMetadata.touch('jobs', totalJobs, 'scrape');
 
     res.json({
       success: true,
       data: {
-        inserted: result.upsertedCount,
-        updated: result.modifiedCount,
-        total: jobs.length,
+        newJobs: newCount,
+        updatedJobs: updatedCount,
+        reoccurringJobs: updatedCount, // Same job found multiple times
+        totalProcessed: jobs.length,
+        uniqueCount: newJobIds.size,
+        summary: {
+          total: jobs.length,
+          new: newCount,
+          updated: updatedCount,
+          timestamp: now.toISOString(),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get scraping statistics
+export const getScrapingStats = async (req, res, next) => {
+  try {
+    const totalJobs = await JobPosting.countDocuments();
+    const activeJobs = await JobPosting.countDocuments({ isActive: true });
+    const inactiveJobs = await JobPosting.countDocuments({ isActive: false });
+    
+    // Jobs scraped once (new in last collection)
+    const newJobs = await JobPosting.countDocuments({ scrapedCount: 1 });
+    
+    // Jobs found multiple times (recurring)
+    const recurringJobs = await JobPosting.countDocuments({ scrapedCount: { $gt: 1 } });
+    
+    // Top recurring jobs (found most often)
+    const topRecurring = await JobPosting.find({ scrapedCount: { $gt: 1 } })
+      .sort({ scrapedCount: -1 })
+      .limit(10)
+      .select('title org scrapedCount source lastScrapedAt');
+
+    // Scraping by source
+    const sourceBreakdown = await JobPosting.aggregate([
+      {
+        $group: {
+          _id: '$source',
+          total: { $sum: 1 },
+          new: { $sum: { $cond: [{ $eq: ['$scrapedCount', 1] }, 1, 0] } },
+          recurring: { $sum: { $cond: [{ $gt: ['$scrapedCount', 1] }, 1, 0] } },
+          avgScrapedCount: { $avg: '$scrapedCount' },
+        }
+      },
+      {
+        $project: {
+          source: '$_id',
+          total: 1,
+          new: 1,
+          recurring: 1,
+          avgScrapedCount: { $round: ['$avgScrapedCount', 2] },
+          _id: 0,
+        }
+      },
+      { $sort: { total: -1 } }
+    ]);
+
+    // Last scrape time
+    const lastScrape = await JobPosting.findOne()
+      .sort({ lastScrapedAt: -1 })
+      .select('lastScrapedAt');
+
+    // Most scraped jobs (all time)
+    const mostScraped = await JobPosting.find()
+      .sort({ scrapedCount: -1 })
+      .limit(5)
+      .select('title org scrapedCount source');
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalJobs,
+          activeJobs,
+          inactiveJobs,
+          newJobs,
+          recurringJobs,
+          recursionRate: totalJobs > 0 ? ((recurringJobs / totalJobs) * 100).toFixed(2) + '%' : '0%',
+        },
+        sourceBreakdown,
+        topRecurring,
+        mostScraped,
+        lastScrapedAt: lastScrape?.lastScrapedAt || null,
       },
     });
   } catch (error) {

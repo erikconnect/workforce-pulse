@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:full": "concurrently \"npm run dev\" \"npm run dev:backend\"",
+    "dev:backend": "cd backend && npm run dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -32,6 +34,7 @@
     "cmdk": "^1.1.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.577.0",
+    "mongoose": "^8.9.4",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
     "playwright-core": "^1.58.2",
@@ -39,6 +42,7 @@
     "react-dom": "^19",
     "react-leaflet": "^5.0.0",
     "recharts": "^3.8.0",
+    "rss-parser": "^3.13.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -46,6 +50,7 @@
     "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^8.2.2",
     "eslint": "^10",
     "eslint-config-next": "16.1.6",
     "postcss": "^8",

@@ -22,7 +22,7 @@ export async function fetchPulseSummary(): Promise<PulseSummary> {
   return res.json();
 }
 
-export async function submitDailyCheckIn(): Promise<{ streak: number }> {
+export async function submitDailyCheckIn(): Promise<{ streak: number; pointsAwarded?: number }> {
   assertApiConfigured();
   const res = await fetch(`${API}/pulse/check-in`, {
     method: "POST",

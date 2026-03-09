@@ -49,12 +49,17 @@ async function scrapeIndeedPage(
     `&fromage=30` + // last 30 days
     `&limit=25`;   // max results per page
 
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  // Use 'load' strategy for faster response; fail fast if Bright Data is slow
+  try {
+    await page.goto(url, { waitUntil: "load", timeout: 15_000 }).catch(() => null);
+  } catch {
+    await page.goto(url, { timeout: 8_000 }).catch(() => null);
+  }
 
-  // Wait for job cards (or bail after 8s if the page structure is unexpected)
+  // Wait for job cards (or bail after 5s)
   await page
     .waitForSelector('[data-jk], .job_seen_beacon, [class*="jobCard"]', {
-      timeout: 8_000,
+      timeout: 5_000,
     })
     .catch(() => null);
 
@@ -162,7 +167,12 @@ async function scrapeLinkedInPage(
     `&f_TPR=r2592000` + // last 30 days
     `&position=1&pageNum=0`;
 
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  // Fail fast if Bright Data is slow - LinkedIn loads complex page, try load then bail
+  try {
+    await page.goto(url, { waitUntil: "load", timeout: 12_000 }).catch(() => null);
+  } catch {
+    await page.goto(url, { timeout: 8_000 }).catch(() => null);
+  }
 
   // Wait for job cards
   await page
@@ -170,6 +180,10 @@ async function scrapeLinkedInPage(
       timeout: 8_000,
     })
     .catch(() => null);
+  
+  await page.waitForSelector('ul[role="list"] li', {
+    timeout: 5_000,
+  }).catch(() => null);
 
   const jobs = await page.evaluate((): ScrapedJob[] => {
     const cardEls = Array.from(
@@ -245,12 +259,17 @@ async function scrapeGlassroomPage(
     `&fromage=30` +
     `&sort_by=date_desc`;
 
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  // Fail fast if Bright Data is slow
+  try {
+    await page.goto(url, { waitUntil: "load", timeout: 12_000 }).catch(() => null);
+  } catch {
+    await page.goto(url, { timeout: 8_000 }).catch(() => null);
+  }
 
   // Wait for job cards
   await page
     .waitForSelector('[data-id], .JobCard_jobCardContainer, li[class*="JobCard"]', {
-      timeout: 8_000,
+      timeout: 5_000,
     })
     .catch(() => null);
 

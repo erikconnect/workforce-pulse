@@ -7,6 +7,8 @@ import playbookRoutes from './playbookRoutes.js';
 import pulseRoutes from './pulseRoutes.js';
 import communityRoutes from './communityRoutes.js';
 import benefitRoutes from './benefitRoutes.js';
+import cacheRoutes from './cache.js';
+import adminRoutes from './adminRoutes.js';
 
 const router = express.Router();
 
@@ -25,6 +27,8 @@ router.get('/', (req, res) => {
       pulse: '/pulse',
       community: '/community',
       benefits: '/benefits',
+      cache: '/cache',
+      admin: '/admin',
     },
   });
 });
@@ -38,5 +42,7 @@ router.use('/playbooks', playbookRoutes);
 router.use('/pulse', pulseRoutes);
 router.use('/community', communityRoutes);
 router.use('/benefits', benefitRoutes);
+router.use('/cache', cacheRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

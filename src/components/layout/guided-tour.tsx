@@ -104,7 +104,7 @@ export function GuidedTour({
       {/* Tooltip */}
       <div
         ref={tooltipRef}
-        className="absolute z-[101] bg-card border border-border rounded-xl shadow-2xl p-4 w-[320px] animate-fade-in-up"
+        className="absolute z-[101] w-[calc(100vw-2rem)] max-w-[320px] animate-fade-in-up rounded-xl border border-border bg-card p-4 shadow-2xl"
         style={{ top: tooltipTop, left: tooltipLeft }}
       >
         <div className="flex items-start justify-between mb-2">

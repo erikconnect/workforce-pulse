@@ -1,6 +1,9 @@
 import JobPosting from '../models/JobPosting.js';
 import Sector from '../models/Sector.js';
 import PulseCheckIn from '../models/PulseCheckIn.js';
+import { getOrCreateCommunityProfile } from '../utils/communityProfile.js';
+
+const CHECK_IN_POINTS = 20;
 
 function startOfDay(date = new Date()) {
   const d = new Date(date);
@@ -146,7 +149,11 @@ export const submitPulseCheckIn = async (req, res, next) => {
     let record = await PulseCheckIn.findOne({ userId });
     if (!record) {
       record = await PulseCheckIn.create({ userId, streak: 1, lastCheckInDate: today });
-      return res.json({ streak: 1 });
+      const profile = await getOrCreateCommunityProfile(userId);
+      profile.streak = 1;
+      profile.checkInPoints = (profile.checkInPoints || 0) + CHECK_IN_POINTS;
+      await profile.save();
+      return res.json({ streak: 1, pointsAwarded: CHECK_IN_POINTS });
     }
 
     if (sameDay(record.lastCheckInDate, today)) {
@@ -162,7 +169,12 @@ export const submitPulseCheckIn = async (req, res, next) => {
     record.lastCheckInDate = today;
     await record.save();
 
-    res.json({ streak: record.streak });
+    const profile = await getOrCreateCommunityProfile(userId);
+    profile.streak = record.streak;
+    profile.checkInPoints = (profile.checkInPoints || 0) + CHECK_IN_POINTS;
+    await profile.save();
+
+    res.json({ streak: record.streak, pointsAwarded: CHECK_IN_POINTS });
   } catch (error) {
     next(error);
   }

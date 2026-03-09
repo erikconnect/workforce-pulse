@@ -67,9 +67,9 @@ export default function CrawlPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
             {(["trigger", "process", "results"] as const).map((stage, i) => (
-              <div key={stage} className="flex items-center gap-2">
+              <div key={stage} className="flex shrink-0 items-center gap-2">
                 {i > 0 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${
                   stage === "results" && pipelineStage === "results"
@@ -125,9 +125,9 @@ export default function CrawlPage() {
       </Card>
 
       <Tabs defaultValue="runner" className="w-full">
-        <TabsList>
-          <TabsTrigger value="runner">Crawl Runner</TabsTrigger>
-          <TabsTrigger value="snapshots">Recent Snapshots</TabsTrigger>
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="runner" className="shrink-0">Crawl Runner</TabsTrigger>
+          <TabsTrigger value="snapshots" className="shrink-0">Recent Snapshots</TabsTrigger>
         </TabsList>
         <TabsContent value="runner" className="mt-4">
           <CrawlRunner />

@@ -695,14 +695,14 @@ export default function PlaybooksPage() {
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h3 className="text-lg font-semibold">Playbook Library</h3>
             <p className="text-sm text-muted-foreground">
               Reusable workforce actions with implementation effort, impact framing, and linked skills.
             </p>
           </div>
-          <Badge variant="outline" className="border-white/35 bg-white/40 text-foreground/80 dark:border-white/10 dark:bg-white/5">
+          <Badge variant="outline" className="self-start border-white/35 bg-white/40 text-foreground/80 sm:self-auto dark:border-white/10 dark:bg-white/5">
             {filtered.length} visible
           </Badge>
         </div>

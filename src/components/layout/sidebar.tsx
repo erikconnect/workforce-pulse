@@ -68,12 +68,16 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const navItems = isAdmin ? ADMIN_NAV_ITEMS : CITIZEN_NAV_ITEMS
 
   return (
-    <div className="glass-panel flex h-full w-full shrink-0 flex-col items-center rounded-none border-r border-glass-border-light py-8 dark:border-glass-border-dark">
-      <div className="mb-12">
+    <div className="glass-panel flex h-full w-full shrink-0 flex-col rounded-none border-r border-glass-border-light px-3 py-4 dark:border-glass-border-dark lg:items-center lg:px-0 lg:py-8">
+      <div className="mb-5 flex items-center gap-3 px-1 lg:mb-12 lg:flex-col lg:items-center lg:gap-2 lg:px-0">
         <SidebarLogo />
+        <div className="min-w-0 lg:hidden">
+          <p className="font-display text-sm font-semibold leading-none">Workforce Pulse</p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Montgomery</p>
+        </div>
       </div>
 
-      <nav className="flex w-full flex-1 flex-col gap-3 px-0">
+      <nav className="flex w-full flex-1 flex-col gap-1.5 lg:gap-3">
         {navItems.map((item) => {
           const active = isActive(pathname, item.href)
 
@@ -85,28 +89,29 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               onClick={() => onNavigate?.()}
               data-tour={item.label === "Missions" ? "nav-missions" : undefined}
               className={cn(
-                "relative mx-2 flex flex-col items-center rounded-2xl border py-1.5 transition-all lg:py-2",
+                "relative mx-0 flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all lg:mx-2 lg:flex-col lg:items-center lg:gap-0 lg:px-0 lg:py-1.5",
                 active
                   ? "glass-panel border-primary/45 bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_16px_rgba(209,154,71,0.08),0_10px_24px_rgba(0,93,122,0.1)] dark:border-primary/40 dark:bg-primary/14"
                   : "border-transparent text-muted-foreground hover:border-white/15 hover:bg-white/20 hover:text-foreground dark:hover:border-white/10 dark:hover:bg-white/5"
               )}
             >
-              <item.icon className={cn("mb-0.5 h-4 w-4 shrink-0", active ? "text-primary" : "")} />
-              <span className={cn("hidden text-[9px] font-medium lg:block", active ? "text-primary" : "")}>{item.label}</span>
+              <item.icon className={cn("h-4 w-4 shrink-0 lg:mb-0.5", active ? "text-primary" : "")} />
+              <span className={cn("text-xs font-medium lg:block lg:text-[9px]", active ? "text-primary" : "")}>{item.label}</span>
             </Link>
           )
         })}
       </nav>
 
-      <div className="mt-auto flex w-full flex-col items-center gap-4 px-2 pt-4">
-        <MontgomeryCityBadge size="md" compact tone="muted" className="hidden opacity-80 lg:inline-flex" />
+      <div className="mt-auto flex w-full flex-col items-start gap-3 pt-3 lg:items-center lg:gap-4 lg:px-2 lg:pt-4">
+        <MontgomeryCityBadge size="md" compact tone="muted" className="opacity-80" />
         <Link
           href="/settings"
           scroll={false}
           onClick={() => onNavigate?.()}
-          className="flex flex-col items-center py-2 text-muted-foreground transition-colors hover:text-foreground"
+          className="flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-muted-foreground transition-colors hover:border-white/15 hover:bg-white/20 hover:text-foreground dark:hover:border-white/10 dark:hover:bg-white/5 lg:w-auto lg:flex-col lg:border-none lg:px-0"
         >
-          <Settings className="mb-1 h-5 w-5" />
+          <Settings className="h-5 w-5 lg:mb-1" />
+          <span className="text-xs lg:hidden">Settings</span>
           <span className="hidden text-[10px] lg:block">Settings</span>
         </Link>
       </div>

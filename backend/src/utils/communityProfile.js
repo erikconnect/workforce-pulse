@@ -83,9 +83,10 @@ export async function buildMissionMemberProfile(userId = 'local-user') {
   const skillPoints = community.skillPoints || 0;
   const sectorPoints = community.sectorPoints || 0;
   const manualPlaybookPoints = community.playbookPoints || 0;
+  const checkInPoints = community.checkInPoints || 0;
   const redemptionPoints = community.redemptionPoints || 0;
 
-  const totalBeforeRedemption = missionPoints + skillPoints + sectorPoints + playbookPoints + manualPlaybookPoints;
+  const totalBeforeRedemption = missionPoints + skillPoints + sectorPoints + playbookPoints + manualPlaybookPoints + checkInPoints;
   const points = Math.max(0, totalBeforeRedemption - redemptionPoints);
   const level = Math.max(1, Math.floor(points / 250) + 1);
   const nextLevelPoints = level * 250;
@@ -102,6 +103,7 @@ export async function buildMissionMemberProfile(userId = 'local-user') {
     missionPoints,
     skillPoints,
     sectorPoints,
+    checkInPoints,
     playbookPoints: playbookPoints + manualPlaybookPoints,
     completedMissionCount,
     activeMissionCount,

@@ -51,6 +51,27 @@ const jobPostingSchema = new mongoose.Schema({
     type: String,
     enum: ['full-time', 'part-time', 'contract', 'temporary', 'internship'],
   },
+  // Scraping tracking fields
+  scrapedCount: {
+    type: Number,
+    default: 1,
+    index: true,
+  },
+  firstScrapedAt: {
+    type: Date,
+    default: Date.now,
+    index: true,
+  },
+  lastScrapedAt: {
+    type: Date,
+    default: Date.now,
+    index: true,
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+    index: true,
+  },
 }, {
   timestamps: true,
 });
@@ -59,5 +80,7 @@ const jobPostingSchema = new mongoose.Schema({
 jobPostingSchema.index({ sectorId: 1, postedDate: -1 });
 jobPostingSchema.index({ source: 1, postedDate: -1 });
 jobPostingSchema.index({ extractedSkills: 1 });
+jobPostingSchema.index({ scrapedCount: 1, lastScrapedAt: -1 });
+jobPostingSchema.index({ isActive: 1, lastScrapedAt: -1 });
 
 export default mongoose.model('JobPosting', jobPostingSchema);

@@ -51,6 +51,5 @@ export const config = {
     "/playbooks/:path*",
     "/crawl/:path*",
     "/settings/:path*",
-    "/jobs/:path*",
   ],
 };

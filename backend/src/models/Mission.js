@@ -53,6 +53,16 @@ const missionSchema = new mongoose.Schema({
     type: String,
     index: true,
   },
+  rewardPoints: {
+    type: Number,
+    default: 100,
+  },
+  participantCount: {
+    type: Number,
+    default: 0,
+  },
+  communityImpact: String,
+  tags: [String],
   impactMetrics: [impactMetricSchema],
   assignee: String,
   dueDate: Date,

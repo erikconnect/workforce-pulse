@@ -1,6 +1,7 @@
 /**
  * Scrape Cache Manager
  * Tracks last scrape time and prevents duplicate concurrent scrapes
+ * Monitors new vs recurring job discoveries
  * Cache duration: 4 hours (14400000ms)
  * Auto-triggers scraping when user visits dashboard or /api/jobs
  */
@@ -11,6 +12,13 @@ import { jobStore } from "./store";
 const CACHE_DURATION_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MIN_SCRAPE_INTERVAL_MS = 60 * 1000; // Prevent concurrent scrapes within 60s
 
+interface LastScrapeStats {
+  newJobs: number;
+  updatedJobs: number;
+  totalProcessed: number;
+  timestamp: string;
+}
+
 interface ScrapeCacheState {
   lastScrapeAt: number;
   isScraping: boolean;
@@ -18,6 +26,7 @@ interface ScrapeCacheState {
   totalResults: number;
   lastSources?: Record<string, { count: number; errors: string[]; url: string; source: string }>;
   scrapePromise?: Promise<void>;
+  lastStats?: LastScrapeStats;
 }
 
 const cache: ScrapeCacheState = {
@@ -27,6 +36,7 @@ const cache: ScrapeCacheState = {
   totalResults: 0,
   lastSources: undefined,
   scrapePromise: undefined,
+  lastStats: undefined,
 };
 
 export async function shouldTriggerScrape(): Promise<boolean> {
@@ -42,6 +52,7 @@ export async function shouldTriggerScrape(): Promise<boolean> {
  * Trigger background scrape (non-blocking)
  * Includes: JobAps + USAJOBS + Indeed + LinkedIn (if Bright Data configured)
  * On first run (no cache), waits for scrape to complete
+ * Tracks statistics about new vs recurring job discoveries
  */
 export async function triggerBackgroundScrape(): Promise<void> {
   if (cache.isScraping) {
@@ -75,9 +86,23 @@ export async function triggerBackgroundScrape(): Promise<void> {
       cache.totalResults = result.totalStored;
       cache.lastSources = result.sources;
       
+      // Capture last bulk stats from store
+      const bulkStats = jobStore.getLastBulkStats();
+      if (bulkStats) {
+        cache.lastStats = {
+          newJobs: bulkStats.newJobs,
+          updatedJobs: bulkStats.updatedJobs,
+          totalProcessed: bulkStats.totalProcessed,
+          timestamp: bulkStats.timestamp,
+        };
+      }
+      
       const duration = Date.now() - cache.scrapeStartedAt;
       console.log(`[Scrape Cache] ✅ Scrape complete in ${(duration / 1000).toFixed(1)}s`);
       console.log(`[Scrape Cache] 📊 Total jobs: ${result.totalStored}`);
+      if (cache.lastStats) {
+        console.log(`[Scrape Cache] 📈 New: ${cache.lastStats.newJobs}, Updated: ${cache.lastStats.updatedJobs}`);
+      }
       console.log(`[Scrape Cache] Sources:`, result.sources);
     } catch (err) {
       console.error(
@@ -110,6 +135,7 @@ export function getCacheStatus() {
     cacheExpiresInMs: cacheExpiresIn,
     cacheExpiresInMinutes: Math.ceil(cacheExpiresIn / 60000),
     cacheValidUntil: new Date(cache.lastScrapeAt + CACHE_DURATION_MS).toISOString(),
+    lastStats: cache.lastStats,
   };
 }
 

@@ -9,8 +9,8 @@ const trainingResourceSchema = new mongoose.Schema({
 const skillSchema = new mongoose.Schema({
   id: {
     type: String,
-    required: true,
     unique: true,
+    sparse: true,
     index: true,
   },
   name: {
@@ -21,13 +21,37 @@ const skillSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['technical', 'soft', 'certification', 'tool', 'other'],
+    enum: [
+      'technical', 
+      'soft', 
+      'certification', 
+      'tool', 
+      'healthcare', 
+      'leadership',
+      'operations',
+      'safety',
+      'cloud',
+      'data-science',
+      'software-development',
+      'other'
+    ],
     default: 'other',
+    index: true,
   },
   demandLevel: {
     type: String,
     enum: ['critical', 'watch', 'stable'],
     default: 'stable',
+    index: true,
+  },
+  demandSignal: {
+    type: Number,
+    default: 0,
+    index: true,
+  },
+  jobCount: {
+    type: Number,
+    default: 0,
   },
   growthRate: {
     type: Number,
@@ -36,6 +60,10 @@ const skillSchema = new mongoose.Schema({
   sparklineData: [Number],
   relatedRoles: [String],
   trainingResources: [trainingResourceSchema],
+  lastUpdated: {
+    type: Date,
+    default: Date.now,
+  },
 }, {
   timestamps: true,
 });

@@ -1,15 +1,15 @@
 "use client"
 
-import { Map, Award, Monitor, Briefcase, Rocket, Settings } from "lucide-react"
+import { Map, Briefcase, Users, MapPin, RadioTower, Settings } from "lucide-react"
 import Link from "next/link"
 
 const STATIC_ACTIONS = [
-  { icon: Map, label: "Map required skills", href: "/skills" },
-  { icon: Award, label: "Validate competency", href: "/sectors" },
-  { icon: Monitor, label: "Host 3 virtual job fairs", href: "/missions" },
-  { icon: Briefcase, label: "Host 3 virtual job fairs", href: "/missions" },
-  { icon: Rocket, label: "Host 3 virtual job fairs", href: "/missions" },
-  { icon: Settings, label: "Configure settings", href: "/settings" },
+  { icon: Briefcase, label: "Browse open jobs", href: "/jobs" },
+  { icon: Users, label: "Map workforce skills", href: "/skills" },
+  { icon: MapPin, label: "Explore sectors", href: "/sectors" },
+  { icon: Map, label: "View city map", href: "/map" },
+  { icon: RadioTower, label: "Launch job scraper", href: "/crawl" },
+  { icon: Settings, label: "System settings", href: "/settings" },
 ]
 
 export function QuickActions() {

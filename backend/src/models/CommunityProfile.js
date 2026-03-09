@@ -22,6 +22,11 @@ const communityProfileSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  checkInPoints: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   playbookPoints: {
     type: Number,
     default: 0,

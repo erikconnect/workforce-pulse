@@ -163,7 +163,7 @@ export function SourceMetadataGrid({ jobs, sources, cityLastFetched }: SourceMet
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {cards.map((card) => {
             const status = sourceStatusVariant(card.jobs, card.errors)
             return (
@@ -172,14 +172,14 @@ export function SourceMetadataGrid({ jobs, sources, cityLastFetched }: SourceMet
                 className="rounded-2xl border border-white/25 bg-white/30 p-3 dark:border-white/10 dark:bg-white/5"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold leading-tight">{card.label}</p>
-                    <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <LinkIcon className="h-3 w-3" />
-                      {card.host}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold leading-tight truncate">{card.label}</p>
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground truncate">
+                      <LinkIcon className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{card.host}</span>
                     </p>
                   </div>
-                  <Badge variant={status.variant} className="h-5 text-[10px]">
+                  <Badge variant={status.variant} className="h-5 text-[10px] flex-shrink-0">
                     {status.label}
                   </Badge>
                 </div>
@@ -197,24 +197,24 @@ export function SourceMetadataGrid({ jobs, sources, cityLastFetched }: SourceMet
 
                 <div className="mt-3 space-y-1.5 text-[11px]">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Salary coverage</span>
-                    <span className="font-medium">{card.metadata.salaryPct}%</span>
+                    <span className="text-muted-foreground truncate">Salary coverage</span>
+                    <span className="font-medium ml-2">{card.metadata.salaryPct}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Deadline coverage</span>
-                    <span className="font-medium">{card.metadata.deadlinePct}%</span>
+                    <span className="text-muted-foreground truncate">Deadline coverage</span>
+                    <span className="font-medium ml-2">{card.metadata.deadlinePct}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Location coverage</span>
-                    <span className="font-medium">{card.metadata.locationPct}%</span>
+                    <span className="text-muted-foreground truncate">Location coverage</span>
+                    <span className="font-medium ml-2">{card.metadata.locationPct}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Sector tagging</span>
-                    <span className="font-medium">{card.metadata.sectorPct}%</span>
+                    <span className="text-muted-foreground truncate">Sector tagging</span>
+                    <span className="font-medium ml-2">{card.metadata.sectorPct}%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Description coverage</span>
-                    <span className="font-medium">{card.metadata.descriptionPct}%</span>
+                    <span className="text-muted-foreground truncate">Description coverage</span>
+                    <span className="font-medium ml-2">{card.metadata.descriptionPct}%</span>
                   </div>
                 </div>
 
@@ -241,10 +241,10 @@ export function SourceMetadataGrid({ jobs, sources, cityLastFetched }: SourceMet
                     )}
                   >
                     <div className="flex items-center gap-1">
-                      {status.label === "Blocked" ? <AlertCircle className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
+                      {status.label === "Blocked" ? <AlertCircle className="h-3 w-3 flex-shrink-0" /> : <Clock3 className="h-3 w-3 flex-shrink-0" />}
                       <span className="font-medium">{card.errors.length} issue(s)</span>
                     </div>
-                    <p className="mt-1 line-clamp-2">{card.errors.join("; ")}</p>
+                    <p className="mt-1 line-clamp-2 break-words">{card.errors.join("; ")}</p>
                   </div>
                 )}
 

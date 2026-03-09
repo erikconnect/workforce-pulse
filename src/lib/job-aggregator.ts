@@ -11,6 +11,8 @@ import {
   deriveInsights,
 } from "@/lib/job-processing";
 import type { RawIndeedRecord, RawLinkedInRecord, RawGlassdoorRecord } from "@/lib/job-processing";
+import type { JobPosting } from "@/services/types";
+import { isCacheFresh } from "@/services/cache-service";
 
 const JOBAPS_RSS_URL =
   process.env.JOBAPS_RSS_URL ?? "https://jobapscloud.com/MGM/rss.asp";
@@ -81,6 +83,24 @@ async function fetchWithTimeout(
   } finally {
     clearTimeout(id);
   }
+}
+
+function logSourceSample(source: string, postings: JobPosting[]): void {
+  if (postings.length === 0) {
+    console.log(`[${source}] ℹ️ No normalized postings to upsert`);
+    return;
+  }
+
+  const sample = postings[0];
+  console.log(`[${source}] 🧪 Sample normalized posting:`, {
+    id: sample.id,
+    title: sample.title,
+    org: sample.org,
+    location: sample.location,
+    source: sample.source,
+    postedDate: sample.postedDate,
+    url: sample.url,
+  });
 }
 
 /** Fetch and upsert JobAps (City of Montgomery) jobs */
@@ -186,8 +206,12 @@ async function fetchIndeed(): Promise<{ count: number; errors: string[]; url: st
     const { normalizeIndeedRecord: norm } = await import("@/lib/job-processing");
     const result = await scrapeIndeedJobs(DEFAULT_SCRAPE_QUERIES);
     const postings = result.jobs.map(job => norm(job as unknown as RawIndeedRecord));
-    await jobStore.bulkUpsert(postings);
-    console.log(`[Indeed] ✅ Found ${result.jobs.length} jobs`);
+    console.log(`[Indeed] ℹ️ Raw scraped jobs: ${result.jobs.length}`);
+    logSourceSample("Indeed", postings);
+    if (postings.length > 0) {
+      const stats = await jobStore.bulkUpsert(postings);
+      console.log(`[Indeed] ✅ Upserted ${postings.length} jobs (new=${stats?.newJobs ?? 0}, updated=${stats?.updatedJobs ?? 0})`);
+    }
     return { count: result.jobs.length, errors, url, source: "Indeed (via Bright Data)" };
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
@@ -209,8 +233,12 @@ async function fetchLinkedIn(): Promise<{ count: number; errors: string[]; url: 
     const { normalizeLinkedInRecord: norm } = await import("@/lib/job-processing");
     const result = await scrapeLinkedInJobs(DEFAULT_SCRAPE_QUERIES);
     const postings = result.jobs.map(job => norm(job as unknown as RawLinkedInRecord));
-    await jobStore.bulkUpsert(postings);
-    console.log(`[LinkedIn] ✅ Found ${result.jobs.length} jobs`);
+    console.log(`[LinkedIn] ℹ️ Raw scraped jobs: ${result.jobs.length}`);
+    logSourceSample("LinkedIn", postings);
+    if (postings.length > 0) {
+      const stats = await jobStore.bulkUpsert(postings);
+      console.log(`[LinkedIn] ✅ Upserted ${postings.length} jobs (new=${stats?.newJobs ?? 0}, updated=${stats?.updatedJobs ?? 0})`);
+    }
     return { count: result.jobs.length, errors, url, source: "LinkedIn (via Bright Data)" };
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
@@ -232,8 +260,12 @@ async function fetchGlassdoor(): Promise<{ count: number; errors: string[]; url:
     const { normalizeGlassdoorRecord: norm } = await import("@/lib/job-processing");
     const result = await scrapeGlassdoorJobs(DEFAULT_SCRAPE_QUERIES);
     const postings = result.jobs.map(job => norm(job as unknown as RawGlassdoorRecord));
-    await jobStore.bulkUpsert(postings);
-    console.log(`[Glassdoor] ✅ Found ${result.jobs.length} jobs`);
+    console.log(`[Glassdoor] ℹ️ Raw scraped jobs: ${result.jobs.length}`);
+    logSourceSample("Glassdoor", postings);
+    if (postings.length > 0) {
+      const stats = await jobStore.bulkUpsert(postings);
+      console.log(`[Glassdoor] ✅ Upserted ${postings.length} jobs (new=${stats?.newJobs ?? 0}, updated=${stats?.updatedJobs ?? 0})`);
+    }
     return { count: result.jobs.length, errors, url, source: "Glassdoor (via Bright Data)" };
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e);
@@ -253,12 +285,42 @@ export interface AggregateResult {
 /**
  * Aggregate jobs from all configured sources.
  * Runs JobAps + USAJOBS always; runs Indeed/LinkedIn/Glassdoor if BRIGHT_DATA_BROWSER_WSS is set.
+ * 
+ * CACHE-FIRST: If jobs cache is fresh (< 24h old), returns stored data without scraping.
  */
 export async function aggregateJobs(options?: {
   includeIndeed?: boolean;
   includeLinkedIn?: boolean;
   includeGlassdoor?: boolean;
+  forceFresh?: boolean;
 }): Promise<AggregateResult> {
+  // ✅ CACHE-FIRST: Check if we have fresh data already
+  if (!options?.forceFresh) {
+    const cacheFresh = await isCacheFresh('jobs');
+    if (cacheFresh) {
+      console.log('[Aggregator] ⚡ Jobs cache is fresh, returning stored data (skip scraping)');
+      const allPostings = await jobStore.getAll();
+      const insights = deriveInsights(allPostings);
+      jobStore.setInsights(insights);
+      
+      return {
+        sources: {
+          jobaps: { count: 0, errors: [], url: JOBAPS_RSS_URL, source: "JobAps (cached)" },
+          usajobs: { count: 0, errors: [], url: USAJOBS_API, source: "USAJOBS (cached)" },
+          indeed: { count: 0, errors: [], url: "cached", source: "Indeed (cached)" },
+          linkedin: { count: 0, errors: [], url: "cached", source: "LinkedIn (cached)" },
+          glassdoor: { count: 0, errors: [], url: "cached", source: "Glassdoor (cached)" },
+        },
+        totalNew: 0,
+        totalStored: await jobStore.count(),
+        insights,
+      };
+    }
+  }
+
+  // Cache is stale or forceFresh requested — proceed with scraping
+  console.log('[Aggregator] 🔄 Jobs cache stale, fetching from all sources');
+  
   const includeScraping = !!process.env.BRIGHT_DATA_BROWSER_WSS;
   const includeIndeed = options?.includeIndeed ?? includeScraping;
   const includeLinkedIn = options?.includeLinkedIn ?? includeScraping;
