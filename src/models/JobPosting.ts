@@ -6,7 +6,19 @@
 import mongoose, { Schema, Model } from 'mongoose';
 import type { JobPosting as JobPostingType } from '@/services/types';
 
-export interface IJobPosting extends Omit<JobPostingType, '_id'> {
+export interface IJobPosting {
+  id: string;
+  title: string;
+  org: string;
+  location: string;
+  postedDate: Date;         // MongoDB stores as Date object, not ISO string
+  description: string;
+  source: string;
+  url: string;
+  sectorId?: string | null;
+  extractedSkills: string[];
+  salary?: string;
+  jobType?: string;
   scrapedCount: number;
   firstScrapedAt: Date;
   lastScrapedAt: Date;
