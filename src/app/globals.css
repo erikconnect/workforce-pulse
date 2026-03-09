@@ -403,7 +403,7 @@
     --secondary: var(--montgomery-deep);
     --secondary-foreground: 0 0% 98%;
     --muted: 40 15% 90%;               /* subtle beige */
-    --muted-foreground: 0 0% 42%;      /* #6b6b6b text-mutedDark */
+    --muted-foreground: 0 0% 36%;      /* darker muted text for AA+ on light surfaces */
     --accent: var(--montgomery-civic);
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
@@ -469,7 +469,7 @@
     --secondary: var(--montgomery-deep);
     --secondary-foreground: 0 0% 96%;
     --muted: 30 12% 20%;
-    --muted-foreground: 0 0% 64%;      /* #a3a3a3 text-mutedLight */
+    --muted-foreground: 0 0% 72%;      /* brighter muted text for dark-mode readability */
     --accent: var(--montgomery-civic);
     --accent-foreground: 0 0% 98%;
     --destructive: 0 72% 51%;

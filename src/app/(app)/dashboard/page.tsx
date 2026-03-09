@@ -96,7 +96,7 @@ function MiniTimelineChart({
 }) {
   if (points.length === 0) {
     return (
-      <div className="flex h-[72px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-black/[0.02] px-3 text-center text-[10px] text-muted-foreground dark:bg-white/[0.03]">
+      <div className="flex h-[72px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-black/[0.02] px-3 text-center text-xs text-muted-foreground dark:bg-white/[0.03]">
         {emptyLabel}
       </div>
     )
@@ -154,7 +154,7 @@ function MiniTimelineChart({
           {formatShortDate(points[points.length - 1].date)}
         </text>
       </svg>
-      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>{footerLabel}</span>
         <span className={cn("font-semibold", delta > 0 ? "text-foreground" : delta < 0 ? "text-muted-foreground" : "text-muted-foreground")}>
           Latest: {latest?.value ?? 0}
@@ -591,7 +591,7 @@ function AdminDashboard() {
           className="opacity-0 animate-fade-in-up animate-stagger-1 transition-all"
         >
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>Public safety posting pressure</span>
               <span>Last 14 days</span>
             </div>
@@ -632,7 +632,7 @@ function AdminDashboard() {
           className="opacity-0 animate-fade-in-up animate-stagger-2 transition-all"
         >
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>Skill demand trend</span>
               <span>Last 14 days</span>
             </div>
@@ -675,12 +675,12 @@ function AdminDashboard() {
           className="opacity-0 animate-fade-in-up animate-stagger-2 transition-all"
         >
           <div className="space-y-3 rounded-2xl border border-white/25 bg-white/35 p-3 dark:border-white/10 dark:bg-black/15">
-            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            <div className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {statusMix.total} sectors tracked
             </div>
             <div className="space-y-2.5">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] font-medium">
+                <div className="flex items-center justify-between text-xs font-medium">
                   <span className="text-emerald-700 dark:text-emerald-300">Stable</span>
                   <span>{statusMix.stablePct}%</span>
                 </div>
@@ -689,7 +689,7 @@ function AdminDashboard() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] font-medium">
+                <div className="flex items-center justify-between text-xs font-medium">
                   <span className="text-amber-700 dark:text-amber-300">Watch</span>
                   <span>{statusMix.watchPct}%</span>
                 </div>
@@ -698,7 +698,7 @@ function AdminDashboard() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] font-medium">
+                <div className="flex items-center justify-between text-xs font-medium">
                   <span className="text-red-700 dark:text-red-300">Critical</span>
                   <span>{statusMix.criticalPct}%</span>
                 </div>
@@ -747,7 +747,7 @@ function AdminDashboard() {
           className="opacity-0 animate-fade-in-up animate-stagger-3 transition-all"
         >
           <div className="rounded-2xl border border-white/25 bg-white/35 p-3 dark:border-white/10 dark:bg-black/15">
-            <div className="flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            <div className="flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
               <span>Next milestone</span>
               <span>{summary?.checkInStreak ?? 0}/{nextStreakMilestone} days</span>
             </div>
@@ -769,16 +769,16 @@ function AdminDashboard() {
                         isToday && !filled && "border border-dashed border-primary/45 bg-transparent",
                       )}
                     />
-                    <span className={cn("text-[10px] text-muted-foreground", isToday && "font-semibold text-primary")}>{day}</span>
+                    <span className={cn("text-xs text-muted-foreground", isToday && "font-semibold text-primary")}>{day}</span>
                   </div>
                 )
               })}
             </div>
-            <p className="mt-4 text-[10px] leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
               One check-in per calendar day. Missing a day breaks the run, and past or future dates cannot be submitted.
             </p>
             {checkInMutation.isError ? (
-              <p className="mt-3 rounded-xl border border-red-200/70 bg-red-50/85 px-3 py-2 text-[11px] text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+              <p className="mt-3 rounded-xl border border-red-200/70 bg-red-50/85 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
                 {checkInMutation.error instanceof Error ? checkInMutation.error.message : "Check-in could not be completed."}
               </p>
             ) : null}

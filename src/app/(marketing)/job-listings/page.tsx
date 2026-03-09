@@ -7,6 +7,7 @@ import { Briefcase, Search, SlidersHorizontal, Lock, ArrowRight, LayoutDashboard
 import Link from "next/link"
 import { MontgomeryCityBadge } from "@/components/branding/montgomery-city-badge"
 import { WorkforcePulseMark } from "@/components/branding/workforce-icons"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -440,47 +441,35 @@ export default function JobsPage() {
 
       <div className="relative z-10 px-4 py-6 md:px-8 md:py-8">
         {/* Header with navigation */}
-        <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 mb-8">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_10px_16px_rgba(209,154,71,0.12),0_12px_24px_rgba(0,93,122,0.12)]">
-              <WorkforcePulseMark className="h-7 w-7" />
+        <header className="glass-card mx-auto mb-8 flex w-full max-w-7xl items-center justify-between gap-3 rounded-2xl px-4 py-3 sm:gap-4 sm:px-6 sm:py-3.5">
+          <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80 sm:gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary shadow-lg sm:h-10 sm:w-10">
+              <WorkforcePulseMark className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <span className="block font-display text-xl font-semibold">Workforce Pulse</span>
-              <span className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Montgomery Jobs</span>
+            <div className="flex flex-col">
+              <span className="block font-display text-base font-semibold leading-tight sm:text-lg">Workforce Pulse</span>
+              <span className="hidden text-[10px] uppercase tracking-[0.2em] text-muted-foreground sm:block">Montgomery, AL</span>
             </div>
           </Link>
-          <div className="flex items-center gap-2 md:gap-3">
-            <MontgomeryCityBadge size="md" tone="muted" className="hidden md:inline-flex" />
-            {!isAuthenticated ? (
-              <>
-                <Button variant="ghost" asChild>
-                  <Link href="/login">Sign in</Link>
-                </Button>
-                <Button asChild className="rounded-xl">
-                  <Link href="/login">Create Account</Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" asChild>
-                  <Link href="/profile">Profile</Link>
-                </Button>
-                <Button asChild className="rounded-xl">
-                  <Link href="/dashboard">Dashboard</Link>
-                </Button>
-              </>
-            )}
-          </div>
+          <nav className="flex items-center gap-2 sm:gap-3">
+            <MontgomeryCityBadge size="sm" tone="muted" className="hidden lg:inline-flex" />
+            <ThemeToggle className="bg-white/30 hover:bg-white/45 dark:bg-white/10 dark:hover:bg-white/20" />
+            <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+              <Link href="/login">Sign in</Link>
+            </Button>
+            <Button asChild size="sm" className="rounded-xl text-sm shadow-lg sm:px-5">
+              <Link href="/dashboard">Get Started</Link>
+            </Button>
+          </nav>
         </header>
 
         <main className="mx-auto w-full max-w-6xl space-y-6 pb-10">
           {jobsContent}
         </main>
 
-        <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 border-t border-border/50 px-1 py-6 text-sm text-muted-foreground mt-12">
-          <p>Workforce Pulse, Montgomery workforce analytics.</p>
-          <MontgomeryCityBadge size="md" compact tone="muted" className="opacity-75" />
+        <footer className="glass-card mx-auto mt-12 flex w-full max-w-7xl flex-col items-center justify-between gap-4 rounded-2xl px-6 py-5 text-sm text-muted-foreground sm:flex-row sm:gap-6">
+          <p className="text-center sm:text-left">© 2026 Workforce Pulse · Montgomery workforce analytics</p>
+          <MontgomeryCityBadge size="sm" compact tone="muted" className="opacity-75" />
         </footer>
       </div>
     </div>
