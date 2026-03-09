@@ -1,7 +1,8 @@
 import type { Role } from "../types";
 import { stubRoles } from "../stubs/roles.stub";
+import { getExternalApiBase } from "./api-base";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+const API = getExternalApiBase();
 
 type ApiEnvelope<T> = { success?: boolean; data?: T };
 

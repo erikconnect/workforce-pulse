@@ -1,7 +1,9 @@
 import type { Playbook, CreatePlaybookPayload } from "../types";
 import { recordPlaybookAction } from "./community-profile";
+import { stubPlaybooks } from "../stubs/playbooks.stub";
+import { getExternalApiBase } from "./api-base";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+const API = getExternalApiBase();
 
 type ApiEnvelope<T> = { success?: boolean; data?: T };
 type PlaybooksListPayload = { playbooks?: unknown[] };
@@ -49,19 +51,22 @@ function unwrapData<T>(payload: ApiEnvelope<T> | T): T {
 }
 
 export async function fetchPlaybooks(): Promise<Playbook[]> {
-  if (!API) throw new Error("NEXT_PUBLIC_API_URL not configured");
-  const res = await fetch(`${API}/playbooks`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch playbooks");
-  const payload = (await res.json()) as ApiEnvelope<PlaybooksListPayload | unknown[]> | PlaybooksListPayload | unknown[];
-  const unwrapped = unwrapData(payload);
-  const rawList = Array.isArray(unwrapped)
-    ? unwrapped
-    : ((unwrapped as PlaybooksListPayload)?.playbooks ?? []);
-  return rawList.map(normalizePlaybook);
+  if (!API) return structuredClone(stubPlaybooks);
+  try {
+    const res = await fetch(`${API}/playbooks`, { cache: "no-store" });
+    if (!res.ok) throw new Error("Failed to fetch playbooks");
+    const payload = (await res.json()) as ApiEnvelope<PlaybooksListPayload | unknown[]> | PlaybooksListPayload | unknown[];
+    const unwrapped = unwrapData(payload);
+    const rawList = Array.isArray(unwrapped)
+      ? unwrapped
+      : ((unwrapped as PlaybooksListPayload)?.playbooks ?? []);
+    return rawList.map(normalizePlaybook);
+  } catch {
+    return structuredClone(stubPlaybooks);
+  }
 }
 
 export async function createPlaybook(payload: CreatePlaybookPayload): Promise<Playbook> {
-  if (!API) throw new Error("NEXT_PUBLIC_API_URL not configured");
   const body = {
     ...payload,
     id: `playbook-${Date.now()}`,
@@ -75,14 +80,24 @@ export async function createPlaybook(payload: CreatePlaybookPayload): Promise<Pl
     hasLiked: false,
     hasSaved: false,
   };
-  const res = await fetch(`${API}/playbooks`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to create playbook");
-  const data = (await res.json()) as ApiEnvelope<unknown> | unknown;
-  const playbook = normalizePlaybook(unwrapData(data));
+  if (!API) {
+    return normalizePlaybook(body);
+  }
+
+  let playbook: Playbook;
+  try {
+    const res = await fetch(`${API}/playbooks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("Failed to create playbook");
+    const data = (await res.json()) as ApiEnvelope<unknown> | unknown;
+    playbook = normalizePlaybook(unwrapData(data));
+  } catch {
+    playbook = normalizePlaybook(body);
+  }
+
   try {
     await recordPlaybookAction(playbook.id, "create", true);
   } catch (err) {
@@ -92,15 +107,28 @@ export async function createPlaybook(payload: CreatePlaybookPayload): Promise<Pl
 }
 
 export async function likePlaybook(id: string): Promise<ToggleLikePayload> {
-  if (!API) throw new Error("NEXT_PUBLIC_API_URL not configured");
-  const res = await fetch(`${API}/playbooks/${id}/like`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: "local-user" }),
-  });
-  if (!res.ok) throw new Error(`Failed to like playbook ${id}`);
-  const data = (await res.json()) as ApiEnvelope<ToggleLikePayload> | ToggleLikePayload;
-  const result = unwrapData(data);
+  let result: ToggleLikePayload = { hasLiked: true, likes: 1 };
+  if (API) {
+    try {
+      const res = await fetch(`${API}/playbooks/${id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: "local-user" }),
+      });
+      if (!res.ok) throw new Error(`Failed to like playbook ${id}`);
+      const data = (await res.json()) as ApiEnvelope<ToggleLikePayload> | ToggleLikePayload;
+      result = unwrapData(data);
+    } catch {
+      const current = stubPlaybooks.find((playbook) => playbook.id === id);
+      if (current) {
+        result = {
+          hasLiked: !current.hasLiked,
+          likes: Math.max(0, current.likes + (current.hasLiked ? -1 : 1)),
+        };
+      }
+    }
+  }
+
   try {
     await recordPlaybookAction(id, "like", result.hasLiked);
   } catch (err) {
@@ -110,15 +138,28 @@ export async function likePlaybook(id: string): Promise<ToggleLikePayload> {
 }
 
 export async function savePlaybook(id: string): Promise<ToggleSavePayload> {
-  if (!API) throw new Error("NEXT_PUBLIC_API_URL not configured");
-  const res = await fetch(`${API}/playbooks/${id}/save`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: "local-user" }),
-  });
-  if (!res.ok) throw new Error(`Failed to save playbook ${id}`);
-  const data = (await res.json()) as ApiEnvelope<ToggleSavePayload> | ToggleSavePayload;
-  const result = unwrapData(data);
+  let result: ToggleSavePayload = { hasSaved: true, saves: 1 };
+  if (API) {
+    try {
+      const res = await fetch(`${API}/playbooks/${id}/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: "local-user" }),
+      });
+      if (!res.ok) throw new Error(`Failed to save playbook ${id}`);
+      const data = (await res.json()) as ApiEnvelope<ToggleSavePayload> | ToggleSavePayload;
+      result = unwrapData(data);
+    } catch {
+      const current = stubPlaybooks.find((playbook) => playbook.id === id);
+      if (current) {
+        result = {
+          hasSaved: !current.hasSaved,
+          saves: Math.max(0, current.saves + (current.hasSaved ? -1 : 1)),
+        };
+      }
+    }
+  }
+
   try {
     await recordPlaybookAction(id, "save", result.hasSaved);
   } catch (err) {

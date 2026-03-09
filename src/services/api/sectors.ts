@@ -1,6 +1,8 @@
 import type { Mission, Playbook, Role, Sector, SectorDetail, Skill } from "../types";
+import { stubSectorDetails } from "../stubs/sector-detail.stub";
+import { getExternalApiBase } from "./api-base";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+const API = getExternalApiBase();
 
 type ApiEnvelope<T> = { success?: boolean; data?: T };
 
@@ -11,12 +13,6 @@ type JobInsights = {
 type PlaybookListData = {
   playbooks?: Playbook[];
 };
-
-function assertApiConfigured() {
-  if (!API) {
-    throw new Error("NEXT_PUBLIC_API_URL not configured");
-  }
-}
 
 function buildFallbackHiringTrend(base: Sector): SectorDetail["hiringTrend"] {
   const monthLabels = ["Sep 2025", "Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026", "Feb 2026", "Mar 2026"];
@@ -76,63 +72,69 @@ export async function fetchSectors(): Promise<Sector[]> {
 }
 
 export async function fetchSectorById(id: string): Promise<SectorDetail | undefined> {
-  assertApiConfigured();
-
-  const [sectorRes, skillsRes, missionsRes, playbooksRes, insightsRes] = await Promise.all([
-    fetch(`${API}/sectors/${id}`, { cache: "no-store" }),
-    fetch(`${API}/skills`, { cache: "no-store" }),
-    fetch(`${API}/missions?sectorId=${encodeURIComponent(id)}`, { cache: "no-store" }),
-    fetch(`${API}/playbooks?sectorId=${encodeURIComponent(id)}`, { cache: "no-store" }),
-    fetch(`${API}/jobs/insights`, { cache: "no-store" }),
-  ]);
-
-  if (sectorRes.status === 404) return undefined;
-  if (!sectorRes.ok) throw new Error(`Failed to fetch sector ${id}: ${sectorRes.status}`);
-
-  const sectorPayload = (await sectorRes.json()) as ApiEnvelope<Sector> | Sector;
-  const sector = "data" in (sectorPayload as ApiEnvelope<Sector>) ? (sectorPayload as ApiEnvelope<Sector>).data : (sectorPayload as Sector);
-  if (!sector) return undefined;
-
-  const skillsPayload = skillsRes.ok ? ((await skillsRes.json()) as ApiEnvelope<Skill[]> | Skill[]) : [];
-  const allSkills = Array.isArray(skillsPayload)
-    ? skillsPayload
-    : (skillsPayload as ApiEnvelope<Skill[]>).data ?? [];
-
-  const missionsPayload = missionsRes.ok ? ((await missionsRes.json()) as ApiEnvelope<Mission[]> | Mission[]) : [];
-  const missions = Array.isArray(missionsPayload)
-    ? missionsPayload
-    : (missionsPayload as ApiEnvelope<Mission[]>).data ?? [];
-
-  const playbooksPayload = playbooksRes.ok
-    ? ((await playbooksRes.json()) as ApiEnvelope<PlaybookListData | Playbook[]> | PlaybookListData | Playbook[])
-    : [];
-
-  let playbooks: Playbook[] = [];
-  if (Array.isArray(playbooksPayload)) {
-    playbooks = playbooksPayload;
-  } else if ((playbooksPayload as ApiEnvelope<PlaybookListData>).data?.playbooks) {
-    playbooks = (playbooksPayload as ApiEnvelope<PlaybookListData>).data?.playbooks ?? [];
-  } else if ((playbooksPayload as PlaybookListData).playbooks) {
-    playbooks = (playbooksPayload as PlaybookListData).playbooks ?? [];
+  if (!API) {
+    return structuredClone(stubSectorDetails[id]);
   }
 
-  const insightsPayload = insightsRes.ok ? ((await insightsRes.json()) as ApiEnvelope<JobInsights> | JobInsights) : {};
-  const insights = "data" in (insightsPayload as ApiEnvelope<JobInsights>)
-    ? (insightsPayload as ApiEnvelope<JobInsights>).data
-    : (insightsPayload as JobInsights);
+  try {
+    const [sectorRes, skillsRes, missionsRes, playbooksRes, insightsRes] = await Promise.all([
+      fetch(`${API}/sectors/${id}`, { cache: "no-store" }),
+      fetch(`${API}/skills`, { cache: "no-store" }),
+      fetch(`${API}/missions?sectorId=${encodeURIComponent(id)}`, { cache: "no-store" }),
+      fetch(`${API}/playbooks?sectorId=${encodeURIComponent(id)}`, { cache: "no-store" }),
+      fetch(`${API}/jobs/insights`, { cache: "no-store" }),
+    ]);
 
-  const criticalRoles = mapTopRolesToCriticalRoles(insights?.topRoles ?? [], id);
-  const skills = allSkills
-    .slice()
-    .sort((a, b) => b.growthRate - a.growthRate)
-    .slice(0, 8);
+    if (sectorRes.status === 404) return undefined;
+    if (!sectorRes.ok) throw new Error(`Failed to fetch sector ${id}: ${sectorRes.status}`);
 
-  return {
-    ...sector,
-    hiringTrend: buildFallbackHiringTrend(sector),
-    criticalRoles,
-    skills,
-    missions,
-    playbooks,
-  };
+    const sectorPayload = (await sectorRes.json()) as ApiEnvelope<Sector> | Sector;
+    const sector = "data" in (sectorPayload as ApiEnvelope<Sector>) ? (sectorPayload as ApiEnvelope<Sector>).data : (sectorPayload as Sector);
+    if (!sector) return undefined;
+
+    const skillsPayload = skillsRes.ok ? ((await skillsRes.json()) as ApiEnvelope<Skill[]> | Skill[]) : [];
+    const allSkills = Array.isArray(skillsPayload)
+      ? skillsPayload
+      : (skillsPayload as ApiEnvelope<Skill[]>).data ?? [];
+
+    const missionsPayload = missionsRes.ok ? ((await missionsRes.json()) as ApiEnvelope<Mission[]> | Mission[]) : [];
+    const missions = Array.isArray(missionsPayload)
+      ? missionsPayload
+      : (missionsPayload as ApiEnvelope<Mission[]>).data ?? [];
+
+    const playbooksPayload = playbooksRes.ok
+      ? ((await playbooksRes.json()) as ApiEnvelope<PlaybookListData | Playbook[]> | PlaybookListData | Playbook[])
+      : [];
+
+    let playbooks: Playbook[] = [];
+    if (Array.isArray(playbooksPayload)) {
+      playbooks = playbooksPayload;
+    } else if ((playbooksPayload as ApiEnvelope<PlaybookListData>).data?.playbooks) {
+      playbooks = (playbooksPayload as ApiEnvelope<PlaybookListData>).data?.playbooks ?? [];
+    } else if ((playbooksPayload as PlaybookListData).playbooks) {
+      playbooks = (playbooksPayload as PlaybookListData).playbooks ?? [];
+    }
+
+    const insightsPayload = insightsRes.ok ? ((await insightsRes.json()) as ApiEnvelope<JobInsights> | JobInsights) : {};
+    const insights = "data" in (insightsPayload as ApiEnvelope<JobInsights>)
+      ? (insightsPayload as ApiEnvelope<JobInsights>).data
+      : (insightsPayload as JobInsights);
+
+    const criticalRoles = mapTopRolesToCriticalRoles(insights?.topRoles ?? [], id);
+    const skills = allSkills
+      .slice()
+      .sort((a, b) => b.growthRate - a.growthRate)
+      .slice(0, 8);
+
+    return {
+      ...sector,
+      hiringTrend: buildFallbackHiringTrend(sector),
+      criticalRoles,
+      skills,
+      missions,
+      playbooks,
+    };
+  } catch {
+    return structuredClone(stubSectorDetails[id]);
+  }
 }
