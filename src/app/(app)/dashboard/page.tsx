@@ -436,9 +436,9 @@ function AdminDashboard() {
             },
             {
               label: "WoW Change",
-              value: `${wowDelta > 0 ? "+" : ""}${wowDelta}%`,
+              value: wowDelta,
               delta: wowDelta,
-              status: wowDelta > 10 ? "critical" : wowDelta > 0 ? "watch" : "stable",
+              status: (wowDelta > 10 ? "critical" : wowDelta > 0 ? "watch" : "stable") as "critical" | "watch" | "stable",
             },
             {
               label: "Critical Roles",
