@@ -13,11 +13,18 @@ import { NextResponse } from "next/server";
 import { jobStore } from "./store";
 import { triggerBackgroundScrape, getCacheStatus, getLastSources } from "./scrape-cache";
 
+function triggerScrapeInBackground(): void {
+  void triggerBackgroundScrape().catch((err) => {
+    console.error(
+      "[Jobs API] Background scrape trigger failed:",
+      err instanceof Error ? err.message : String(err)
+    );
+  });
+}
+
 export async function GET() {
-  // Trigger background scrape if needed
-  // On first run, this will WAIT for the scrape to complete
-  // On subsequent runs (cache valid), this does nothing
-  await triggerBackgroundScrape();
+  // Never block response on scraping. Return current DB-backed data immediately.
+  triggerScrapeInBackground();
 
   const count = await jobStore.count();
   const insights = jobStore.getInsights();
