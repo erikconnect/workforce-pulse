@@ -9,6 +9,7 @@ import {
   SectorFieldIcon,
   WorkforcePulseMark,
 } from "@/components/branding/workforce-icons"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Button } from "@/components/ui/button"
 
 export default function LandingPage() {
@@ -32,6 +33,7 @@ export default function LandingPage() {
           </Link>
           <nav className="flex items-center gap-2 sm:gap-3">
             <MontgomeryCityBadge size="sm" tone="muted" className="hidden lg:inline-flex" />
+            <ThemeToggle className="bg-white/30 hover:bg-white/45 dark:bg-white/10 dark:hover:bg-white/20" />
             <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
               <Link href="/login">Sign in</Link>
             </Button>

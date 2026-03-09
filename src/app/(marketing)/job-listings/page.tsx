@@ -7,6 +7,7 @@ import { Briefcase, Search, SlidersHorizontal, Lock, ArrowRight, LayoutDashboard
 import Link from "next/link"
 import { MontgomeryCityBadge } from "@/components/branding/montgomery-city-badge"
 import { WorkforcePulseMark } from "@/components/branding/workforce-icons"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -452,6 +453,7 @@ export default function JobsPage() {
           </Link>
           <div className="flex items-center gap-2 md:gap-3">
             <MontgomeryCityBadge size="md" tone="muted" className="hidden md:inline-flex" />
+            <ThemeToggle className="bg-white/30 hover:bg-white/45 dark:bg-white/10 dark:hover:bg-white/20" />
             {!isAuthenticated ? (
               <>
                 <Button variant="ghost" asChild>
