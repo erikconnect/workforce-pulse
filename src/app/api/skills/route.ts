@@ -90,7 +90,7 @@ function inferDemandLevel(count: number): PulseStatus {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
-  const status = searchParams.get("status") as PulseStatus | null;
+  const status = searchParams.get("status") as (PulseStatus | "all") | null;
   const search = searchParams.get("search");
 
   try {
@@ -145,7 +145,7 @@ export async function GET(req: NextRequest) {
     if (category && category !== "All") {
       skills = skills.filter((s: any) => s.category === category);
     }
-    if (status && status !== "all") {
+    if (status && status !== "all" && (status === "critical" || status === "watch" || status === "stable")) {
       skills = skills.filter((s: any) => s.demandLevel === status);
     }
 
@@ -184,7 +184,7 @@ export async function GET(req: NextRequest) {
       if (category && category !== "All") {
         filtered = filtered.filter((s) => s.category === category);
       }
-      if (status && status !== "all") {
+      if (status && status !== "all" && (status === "critical" || status === "watch" || status === "stable")) {
         filtered = filtered.filter((s) => s.demandLevel === status);
       }
       if (search) {
