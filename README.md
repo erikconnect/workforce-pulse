@@ -2,6 +2,13 @@
 
 A civic workforce intelligence dashboard that scrapes job postings and translates them into hiring trends, in-demand skills, and training needs for the Montgomery job market. Built for the World Wide Vibes Hackathon 2 (GenAI / vibe coding).
 
+> **✨ Latest Updates (March 2026)**
+> - 📚 Comprehensive documentation reorganization with clear navigation
+> - 🧹 Clean, production-ready codebase
+> - 🤖 6 specialized AI agents for accelerated development
+> - 📊 Enhanced job tracking with MongoDB integration
+> - 🎨 Montgomery-specific civic branding and design system
+
 ## Overview
 
 Workforce Pulse helps city workforce and HR leaders, department leads (especially Public Safety), and education partners:
@@ -290,103 +297,207 @@ API keys are server-side only; never expose them to the client.
 
 ## 🗂️ Project Structure
 
+**Clean, organized, and production-ready!** No test files, no duplicates, just essential code and comprehensive documentation.
+
 ```plaintext
 workforce-pulse/
-├── src/
+├── 📂 src/                     # Next.js Application
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── (app)/              # Main application routes
-│   │   │   ├── dashboard/      # Dashboard page
-│   │   │   ├── jobs/           # Job listings
-│   │   │   ├── sectors/        # Sector views
-│   │   │   ├── skills/         # Skills tracking
-│   │   │   ├── missions/       # Action missions
-│   │   │   ├── playbooks/      # Shareable playbooks
-│   │   │   ├── map/            # Map visualization
-│   │   │   ├── settings/       # User settings
-│   │   │   └── crawl/          # Crawl runner
-│   │   ├── (marketing)/        # Marketing pages
+│   │   │   ├── dashboard/      # 📊 Dashboard page
+│   │   │   ├── jobs/           # 💼 Job listings with filters
+│   │   │   ├── sectors/        # 🏢 Sector analysis
+│   │   │   ├── skills/         # 🎯 Skills tracking
+│   │   │   ├── missions/       # ✅ Action missions
+│   │   │   ├── playbooks/      # 📖 Shareable playbooks
+│   │   │   ├── map/            # 🗺️ Geospatial visualization
+│   │   │   ├── settings/       # ⚙️ User settings & config
+│   │   │   └── crawl/          # 🤖 Job scraping runner
+│   │   ├── (marketing)/        # Landing & marketing pages
 │   │   └── api/                # API routes
 │   │       ├── jobs/           # Job aggregation endpoints
 │   │       ├── brightdata/     # Bright Data integration
 │   │       ├── city-jobs/      # JobAps RSS parser
 │   │       └── workforce-data/ # ArcGIS data endpoints
 │   ├── components/             # React components
-│   │   ├── branding/           # Custom icon set + Montgomery city badge
-│   │   ├── dashboard/          # Dashboard components
-│   │   ├── jobs/               # Job-related components
+│   │   ├── branding/           # 🏛️ Montgomery civic branding
+│   │   ├── dashboard/          # Dashboard widgets
+│   │   ├── jobs/               # Job cards & filters
 │   │   ├── sectors/            # Sector components
-│   │   ├── skills/             # Skills components
-│   │   ├── missions/           # Mission components
+│   │   ├── skills/             # Skills visualization
+│   │   ├── missions/           # Mission tracking
 │   │   ├── playbooks/          # Playbook components
-│   │   ├── map/                # Map components
-│   │   ├── brightdata/         # Bright Data UI
+│   │   ├── map/                # Map & geospatial
+│   │   ├── brightdata/         # Scraping UI
 │   │   ├── layout/             # Layout components
 │   │   └── ui/                 # shadcn/ui components
 │   ├── services/               # API service layer
 │   ├── hooks/                  # Custom React hooks
 │   ├── lib/                    # Utility functions
 │   ├── data/                   # Mock/stub data
+│   ├── models/                 # TypeScript models
+│   ├── integrations/           # Integration helpers
 │   └── types/                  # TypeScript types
-├── backend/
-│   └── src/
-│       ├── models/             # MongoDB models
-│       │   ├── JobPosting.js   # Job posting schema
-│       │   ├── Mission.js      # Mission schema
-│       │   ├── Playbook.js     # Playbook schema
-│       │   ├── PulseCheckIn.js # Daily pulse check-in schema
-│       │   ├── CommunityProfile.js
-│       │   ├── BenefitRedemption.js
-│       │   ├── Sector.js       # Sector schema
-│       │   └── Skill.js        # Skill schema
-│       ├── routes/             # Express routes
-│       ├── controllers/        # Route controllers
-│       ├── middleware/         # Express middleware
-│       └── config/             # Configuration
-├── docs/                       # Documentation
-│   ├── getting-started/        # Setup guides
-│   ├── architecture/           # Architecture docs
-│   ├── development/            # Dev guides
-│   ├── integrations/           # Integration guides
-│   └── deployment/             # Deployment guides
-└── .github/
-    └── copilot/                # AI agent configurations
+│
+├── 📂 backend/                 # Express.js API Server
+│   ├── src/
+│   │   ├── models/             # MongoDB schemas
+│   │   │   ├── JobPosting.js   # 💼 Job posting with tracking
+│   │   │   ├── Mission.js      # ✅ Community missions
+│   │   │   ├── Playbook.js     # 📖 Action playbooks
+│   │   │   ├── PulseCheckIn.js # 📊 Daily pulse tracking
+│   │   │   ├── CommunityProfile.js
+│   │   │   ├── BenefitRedemption.js
+│   │   │   ├── Sector.js       # 🏢 Sector data
+│   │   │   └── Skill.js        # 🎯 Skills data
+│   │   ├── routes/             # Express routes
+│   │   ├── controllers/        # Route controllers
+│   │   ├── middleware/         # Express middleware
+│   │   ├── services/           # Business logic
+│   │   ├── utils/              # Helper functions
+│   │   ├── seeds/              # Database seeders
+│   │   ├── config/             # Configuration
+│   │   └── server.js           # Server entry point
+│   ├── Dockerfile              # Container configuration
+│   └── README.md               # Backend documentation
+│
+├── 📂 docs/                    # **Comprehensive Documentation**
+│   ├── README.md               # 📍 Documentation hub
+│   ├── agents.md               # 🤖 AI agents quick reference
+│   ├── getting-started/        # 🚀 Onboarding guides
+│   │   ├── setup.md            # Environment setup
+│   │   ├── quick-reference.md  # Common commands
+│   │   └── agents.md           # AI agents guide
+│   ├── architecture/           # 🏗️ System design
+│   │   ├── overview.md         # Architecture overview
+│   │   ├── diagrams.md         # System diagrams
+│   │   ├── design-system.md    # UI/UX patterns
+│   │   ├── data-sources.md     # External APIs
+│   │   └── caching-system.md   # Caching strategy
+│   ├── development/            # 💻 Development guides
+│   │   ├── implementation-guide.md
+│   │   ├── api-reference.md
+│   │   ├── code-recipes.md
+│   │   ├── mongodb-job-tracking.md
+│   │   └── (feature guides)
+│   ├── integrations/           # 🔌 External services
+│   │   ├── brightdata-crawl-api.md
+│   │   ├── scraping-setup.md
+│   │   └── (integration docs)
+│   ├── deployment/             # 🚀 Deployment
+│   │   ├── vercel-setup.md
+│   │   ├── database-setup.md
+│   │   └── deployment-checklist.md
+│   └── archive/                # 📦 Historical docs
+│
+├── 📂 .github/
+│   └── copilot/                # 🤖 6 specialized AI agents
+│       ├── Frontend Agent.agent.md
+│       ├── Backend Agent.agent.md
+│       ├── Integration Agent.agent.md
+│       ├── Testing Agent.agent.md
+│       ├── Documentation Agent.agent.md
+│       └── DevOps Agent.agent.md
+│
+├── 📂 public/
+│   └── images/                 # 🖼️ Static assets
+│       ├── city-logo.png
+│       ├── montgomery-city-mark.png
+│       └── montgomery-[1-3].jpg
+│
+└── 📄 Configuration Files
+    ├── .env.example            # Environment template
+    ├── .eslintrc.json          # ESLint config
+    ├── components.json         # shadcn/ui config
+    ├── next.config.js          # Next.js config
+    ├── package.json            # Dependencies
+    ├── tailwind.config.ts      # Tailwind CSS
+    ├── tsconfig.json           # TypeScript
+    ├── vercel.json             # Vercel deployment
+    └── vitest.config.ts        # Testing config
 ```
 
 ## 🤖 AI Agents
 
-We have 6 specialized AI agents to accelerate development. Invoke them with `@` in GitHub Copilot Chat:
+Workforce Pulse includes **6 specialized AI agents** configured in `.github/copilot/` to accelerate development across all aspects of the project.
 
-- **@Frontend Agent** — Next.js, React, TypeScript, Tailwind, UI components
-- **@Backend Agent** — Express, MongoDB, API endpoints, validation
-- **@Integration Agent** — External APIs, data scraping, Bright Data
-- **@Testing Agent** — Vitest, unit tests, E2E tests, quality assurance
-- **@Documentation Agent** — Technical writing, API docs, code comments
-- **@DevOps Agent** — Vercel deployment, CI/CD, optimization
+### Available Agents
 
-**Example:** `@Frontend Agent: Create a job filter component with sector selection`
+| Agent | Expertise | Use For |
+|-------|-----------|----------|
+| 🎨 **Frontend Agent** | Next.js, React 19, TypeScript, Tailwind CSS | UI components, pages, styling, client-side logic |
+| 🔧 **Backend Agent** | Express, MongoDB, API design, validation | Server routes, controllers, database models |
+| 🔌 **Integration Agent** | External APIs, Bright Data, job scraping | API integrations, data transformations, scraping |
+| ✅ **Testing Agent** | Vitest, unit tests, E2E tests, QA | Writing tests, debugging, quality assurance |
+| 📝 **Documentation Agent** | Technical writing, API docs, comments | Documentation, README files, code comments |
+| 🚀 **DevOps Agent** | Vercel, CI/CD, Docker, optimization | Deployment, build configs, performance tuning |
 
-See [docs/getting-started/agents.md](docs/getting-started/agents.md) for complete usage guide.
+### Quick Examples
+
+```bash
+# Frontend development
+@Frontend Agent: Create a responsive job filter component with sector selection
+
+# Backend API
+@Backend Agent: Add validation middleware for mission creation
+
+# External integrations
+@Integration Agent: Add error handling for Bright Data API calls
+
+# Testing
+@Testing Agent: Write unit tests for the job aggregation service
+
+# Documentation
+@Documentation Agent: Update API docs with the new filter endpoint
+
+# Deployment
+@DevOps Agent: Optimize the Vercel build configuration
+```
+
+📖 **Full Guide**: [docs/getting-started/agents.md](docs/getting-started/agents.md) | **Quick Reference**: [docs/agents.md](docs/agents.md)
 
 ## 📚 Documentation
+**Comprehensive, organized, and easy to navigate!** All documentation has been professionally organized with lowercase filenames and clear categorization.
+**� Full Documentation Hub**: [docs/README.md](docs/README.md) - Complete documentation index
 
 **👉 Start Here**: [Setup Guide](docs/getting-started/setup.md) and [Quick Reference](docs/getting-started/quick-reference.md)
 
 ### Quick Links
 
-- **New to the project?** → [Setup Guide](docs/getting-started/setup.md) + [Quick Reference](docs/getting-started/quick-reference.md)
+- **New to the project?** → [Getting Started](docs/getting-started/) | [Setup Guide](docs/getting-started/setup.md)
 - **Need code examples?** → [Code Recipes](docs/development/code-recipes.md)
-- **Building features?** → [Architecture Overview](docs/architecture/overview.md)
+- **Understanding architecture?** → [Architecture Overview](docs/architecture/overview.md)
 - **Using AI agents?** → [Agents Guide](docs/getting-started/agents.md)
-- **Deploying?** → [Vercel Setup](docs/deployment/vercel-setup.md)
+- **Deploying?** → [Deployment](docs/deployment/) | [Vercel Setup](docs/deployment/vercel-setup.md)
 - **API reference?** → [API Documentation](docs/development/api-reference.md)
+- **Job scraping?** → [Scraping Setup](docs/integrations/scraping-setup.md)
 - **Project status?** → [Integration Status](docs/development/integration-status.md)
+
+### Documentation Sections
+
+- 🚀 **[Getting Started](docs/getting-started/)** - Setup, quick reference, and AI agents guide
+- 🏗️ **[Architecture](docs/architecture/)** - System design, diagrams, and data sources
+- 💻 **[Development](docs/development/)** - Implementation guides, API docs, and code recipes
+- 🔌 **[Integrations](docs/integrations/)** - External APIs and job scraping setup
+- 🚀 **[Deployment](docs/deployment/)** - Database setup, Vercel deployment, and checklists
 
 ### By Role
 
-- **Frontend Developers** → [Setup](docs/getting-started/setup.md) → [Architecture](docs/architecture/overview.md) → [Code Recipes](docs/development/code-recipes.md)
-- **Backend Developers** → [Setup](docs/getting-started/setup.md) → [API Reference](docs/development/api-reference.md)
-- **DevOps/Deployment** → [Vercel Setup](docs/deployment/vercel-setup.md)
-- **Integration Work** → [Bright Data Guide](docs/integrations/brightdata-crawl-api.md) → [Data Sources](docs/architecture/data-sources.md)
+- **Frontend Developers** → [Getting Started](docs/getting-started/) → [Architecture](docs/architecture/) → [Code Recipes](docs/development/code-recipes.md)
+- **Backend Developers** → [Getting Started](docs/getting-started/) → [API Reference](docs/development/api-reference.md) → [MongoDB Job Tracking](docs/development/mongodb-job-tracking.md)
+- **DevOps/Deployment** → [Deployment](docs/deployment/) → [Vercel Setup](docs/deployment/vercel-setup.md)
+- **Integration Work** → [Integrations](docs/integrations/) → [Bright Data Guide](docs/integrations/brightdata-crawl-api.md)
+
+## 🎯 Project Status
+
+✅ **Production Ready** - Clean codebase with comprehensive documentation  
+✅ **Well Documented** - 40+ documentation files organized by category  
+✅ **AI-Assisted Development** - 6 specialized agents configured  
+✅ **MongoDB Integration** - Complete job tracking with scraping metadata  
+✅ **Multi-Source Scraping** - JobAps, USAJOBS, Indeed, LinkedIn, Glassdoor  
+✅ **Montgomery Branding** - Custom civic design system and iconography  
+✅ **Testing Ready** - Vitest configuration with test structure  
+✅ **Deployment Ready** - Vercel optimized with Docker support  
 
 ## 🔧 Troubleshooting
 
@@ -420,15 +531,93 @@ Ensure `MONGODB_URI` is set correctly in `backend/.env`. Check MongoDB is runnin
 
 ## 🚢 Deployment
 
-### Frontend (Vercel)
+### Quick Deploy to Vercel (Auto-Deploy Enabled)
 
-The frontend is optimized for Vercel deployment:
+**✅ Your GitHub repo is already connected to Vercel!**  
+**✅ MongoDB Atlas is configured!**
 
-1. Connect your GitHub repository to Vercel
-2. Configure environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
+Every push to `main` automatically deploys to production! 🎉
 
-See [docs/deployment/vercel-setup.md](docs/deployment/vercel-setup.md) for detailed instructions.
+#### Step 1: Add Environment Variables (One-Time Setup)
+
+Go to [Vercel Dashboard](https://vercel.com/dashboard) → Your Project → Settings → Environment Variables
+
+Add these variables for **Production**, **Preview**, and **Development**:
+
+**MONGODB_URI**
+```
+mongodb+srv://erik_db_user:G39w8HLfqcQiHSef@workforce-pulse.incefrw.mongodb.net/workforce-pulse?retryWrites=true&w=majority&appName=Workforce-pulse
+```
+
+**NEXT_PUBLIC_USE_STUBS**
+```
+false
+```
+
+#### Step 2: Push to Deploy
+
+Use the quick script:
+```powershell
+.\push-to-deploy.ps1
+```
+
+Or manually:
+```bash
+git add .
+git commit -m "Your commit message"
+git push origin main
+```
+
+**Vercel automatically builds and deploys!** ✨
+
+#### Step 3: Monitor Deployment
+
+Watch live at: [vercel.com/dashboard](https://vercel.com/dashboard)
+
+Deployment typically takes 2-3 minutes.
+
+### Complete Auto-Deploy Guide
+
+📖 **[AUTO_DEPLOY_GUIDE.md](AUTO_DEPLOY_GUIDE.md)** - Complete workflow, monitoring, troubleshooting
+
+📖 **[DEPLOY_NOW.md](DEPLOY_NOW.md)** - Quick start guide
+
+### MongoDB Atlas Configuration
+
+✅ **Already configured!**
+- **Cluster**: workforce-pulse.incefrw.mongodb.net
+- **Database**: workforce-pulse
+- **Connection**: Set in `.env.local` and ready for Vercel
+
+**⚠️ Important**: Whitelist `0.0.0.0/0` in MongoDB Atlas → Network Access for Vercel deployment.
+
+### What Happens on Deploy
+
+1. ✅ Vercel detects your push to GitHub
+2. ✅ Builds your Next.js application
+3. ✅ API routes connect directly to MongoDB Atlas
+4. ✅ Cron job configured for daily job updates (midnight UTC)
+5. ✅ Deploys to global edge network
+6. ✅ Sends deployment notification
+
+### Test Deployment
+
+After deploying, verify these endpoints:
+- `https://your-app.vercel.app/api/skills`
+- `https://your-app.vercel.app/api/jobs/stats`
+- `https://your-app.vercel.app/api/jobs/aggregate`
+
+### Branch Previews
+
+- **main branch** → Production deployment
+- **other branches** → Preview deployments with unique URLs
+- **Pull requests** → Automatic preview deployments
+
+### Additional Resources
+
+- [Vercel Dashboard](https://vercel.com/dashboard) - Monitor deployments
+- [MongoDB Atlas](https://cloud.mongodb.com/) - Database management
+- [docs/deployment/](docs/deployment/) - Technical documentation
 
 ### Backend Deployment
 
@@ -510,10 +699,46 @@ USAJOBS_USER_AGENT=your-email@example.com
 
 Private — hackathon project.
 
+## 🎉 Project Highlights
+
+### What Makes Workforce Pulse Special
+
+- **🎯 Civic-Focused**: Designed specifically for Montgomery, Alabama's workforce development needs
+- **🤖 AI-Accelerated**: 6 specialized AI agents reduce development time and improve code quality
+- **📊 Data-Driven**: Real-time job market intelligence from multiple authoritative sources
+- **🏛️ Community-Centered**: Montgomery-specific branding with custom civic design system
+- **📚 Well-Documented**: 40+ documentation files with clear navigation and examples
+- **🧹 Production-Ready**: Clean codebase, comprehensive tests, deployment-ready
+
+### Key Achievements
+
+✅ **Multi-Source Job Aggregation** - JobAps, USAJOBS, Indeed, LinkedIn, Glassdoor  
+✅ **MongoDB Job Tracking** - Automatic tracking of new vs. recurring job postings  
+✅ **Interactive Dashboard** - Real-time workforce signals and trend analysis  
+✅ **Geospatial Visualization** - Map view with Montgomery landmarks and workforce data  
+✅ **Action Planning** - Missions and Playbooks for community coordination  
+✅ **Comprehensive Documentation** - Organized by role and task, easy to navigate  
+
 ## 🙏 Acknowledgments
 
-Built for World Wide Vibes Hackathon 2, focusing on civic tech solutions for Montgomery, Alabama's workforce development needs.
+Built for **World Wide Vibes Hackathon 2** (March 2026), focusing on civic tech solutions for Montgomery, Alabama's workforce development challenges.
+
+Special thanks to:
+- Montgomery city officials for civic branding resources
+- Bright Data for job scraping capabilities
+- The open-source community for amazing tools and frameworks
+
+## 🚀 Next Steps
+
+Interested in the project? Here's how to get started:
+
+1. **Quick Start**: Follow the [Setup Guide](docs/getting-started/setup.md)
+2. **Explore Docs**: Browse the [Documentation Hub](docs/README.md)
+3. **Use AI Agents**: Check out the [AI Agents Guide](docs/getting-started/agents.md)
+4. **Deploy**: Follow the [Deployment Guide](docs/deployment/vercel-setup.md)
 
 ---
 
-**Questions?** Check the [Setup Guide](docs/getting-started/setup.md) or [Quick Reference](docs/getting-started/quick-reference.md) for answers.
+**Questions?** Check the [Setup Guide](docs/getting-started/setup.md), [Quick Reference](docs/getting-started/quick-reference.md), or browse the comprehensive documentation in [docs/](docs/).
+
+**Last Updated**: March 9, 2026 | **Status**: ✅ Production Ready
