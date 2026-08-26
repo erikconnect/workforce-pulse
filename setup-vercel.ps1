@@ -21,7 +21,14 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # MongoDB Configuration
-$MONGODB_URI = "mongodb+srv://erik_db_user:G39w8HLfqcQiHSef@workforce-pulse.incefrw.mongodb.net/workforce-pulse?retryWrites=true&w=majority&appName=Workforce-pulse"
+# Read from environment — never hardcode credentials in the repo
+$MONGODB_URI = $env:MONGODB_URI
+if (-not $MONGODB_URI) {
+    Write-Host "✗ MONGODB_URI is not set in your environment." -ForegroundColor Red
+    Write-Host "  Export it first, e.g.:" -ForegroundColor Yellow
+    Write-Host '  $env:MONGODB_URI = "mongodb+srv://USER:PASSWORD@cluster.mongodb.net/workforce-pulse?retryWrites=true&w=majority"' -ForegroundColor Yellow
+    exit 1
+}
 
 Write-Host "✓ MongoDB URI configured" -ForegroundColor Green
 Write-Host ""

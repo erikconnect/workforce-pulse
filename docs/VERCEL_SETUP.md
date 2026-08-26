@@ -33,7 +33,7 @@ This script will:
 
    **MONGODB_URI**
    ```
-   mongodb+srv://erik_db_user:G39w8HLfqcQiHSef@workforce-pulse.incefrw.mongodb.net/workforce-pulse?retryWrites=true&w=majority&appName=Workforce-pulse
+   mongodb+srv://USER:PASSWORD@workforce-pulse.incefrw.mongodb.net/workforce-pulse?retryWrites=true&w=majority&appName=Workforce-pulse
    ```
    - ☑ Production
    - ☑ Preview
