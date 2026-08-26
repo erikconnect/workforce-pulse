@@ -7,7 +7,7 @@ Your MongoDB Atlas connection has been successfully set up for automatic deploym
 ### Configuration Details
 
 **MongoDB Atlas**
-- ✅ Connection String: `mongodb+srv://erik_db_user:***@workforce-pulse.incefrw.mongodb.net/`
+- ✅ Connection String: `mongodb+srv://USER:***@your-cluster.mongodb.net/` (configure in Vercel; do not commit secrets)
 - ✅ Database Name: `workforce-pulse`
 - ✅ Configured in `.env.local`
 - ✅ Configured in `backend/.env`

@@ -7,7 +7,7 @@ Your MongoDB Atlas connection has been successfully set up for automatic deploym
 ### Configuration Details
 
 **MongoDB Atlas**
-- ✅ Connection String: `mongodb+srv://erik_db_user:***@workforce-pulse.incefrw.mongodb.net/`
+- ✅ Connection String: `mongodb+srv://USER:***@your-cluster.mongodb.net/` (configure in Vercel; do not commit secrets)
 - ✅ Database Name: `workforce-pulse`
 - ✅ Configured in `.env.local`
 - ✅ Configured in `backend/.env`
@@ -42,7 +42,7 @@ Since your GitHub repo is already connected to Vercel, deployment is automatic!
 
 **MONGODB_URI**
 ```
-mongodb+srv://erik_db_user:G39w8HLfqcQiHSef@workforce-pulse.incefrw.mongodb.net/workforce-pulse?retryWrites=true&w=majority&appName=Workforce-pulse
+mongodb+srv://USER:PASSWORD@workforce-pulse.incefrw.mongodb.net/workforce-pulse?retryWrites=true&w=majority&appName=Workforce-pulse
 ```
 - ☑️ Production, Preview, Development
 
